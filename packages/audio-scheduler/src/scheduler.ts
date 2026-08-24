@@ -73,6 +73,11 @@ export class AudioScheduler {
 
   tick(): TickResult {
     const currentTime = this.timeSource.currentTime();
+    
+    if (typeof currentTime !== 'number' || isNaN(currentTime) || !isFinite(currentTime) || currentTime < 0) {
+      throw new InvalidAudioTimeError('Invalid audio time returned from source.');
+    }
+
     const windowEnd = currentTime + this.lookahead;
 
     const result: TickResult = {

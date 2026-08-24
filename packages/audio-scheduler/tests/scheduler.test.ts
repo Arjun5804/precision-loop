@@ -67,13 +67,25 @@ describe('AudioScheduler', () => {
     expect(sink.scheduledEvents).toHaveLength(0);
   });
 
-  it('allows scheduling the same ID again after submission', () => {
-    scheduler.schedule(createEvent('1', 10.000));
-    timeSource.setCurrentTime(10.000);
-    scheduler.tick();
+  it('allows ID reuse after cancellation, late, or scheduled states', () => {
+    // 1. reuse after cancel
+    scheduler.schedule(createEvent('reuse-id', 10.000));
+    scheduler.cancel('reuse-id');
+    expect(() => scheduler.schedule(createEvent('reuse-id', 10.100))).not.toThrow();
     
-    scheduler.schedule(createEvent('1', 10.050));
-    expect(scheduler.cancel('1')).toBe(true);
+    // 2. reuse after cancelAll
+    scheduler.cancelAll();
+    expect(() => scheduler.schedule(createEvent('reuse-id', 10.200))).not.toThrow();
+    
+    // 3. reuse after scheduled
+    timeSource.setCurrentTime(10.200);
+    scheduler.tick(); // schedules 'reuse-id'
+    expect(() => scheduler.schedule(createEvent('reuse-id', 10.300))).not.toThrow();
+    
+    // 4. reuse after late
+    timeSource.setCurrentTime(10.400); // 10.300 is late now
+    scheduler.tick(); // pops 'reuse-id' as late
+    expect(() => scheduler.schedule(createEvent('reuse-id', 10.500))).not.toThrow();
   });
 
   it('validates event properties', () => {
@@ -136,5 +148,38 @@ describe('AudioScheduler', () => {
     const cancelled = scheduler.cancel('1');
     expect(cancelled).toBe(false); // No longer pending
     expect(sink.scheduledEvents.map(e => e.id)).toEqual(['1']);
+  });
+
+  it('validates AudioTimeSource.currentTime() inside tick()', () => {
+    scheduler.start();
+    
+    timeSource.setCurrentTime(-1);
+    expect(() => scheduler.tick()).toThrow(InvalidAudioTimeError);
+    
+    timeSource.setCurrentTime(NaN);
+    expect(() => scheduler.tick()).toThrow(InvalidAudioTimeError);
+    
+    timeSource.setCurrentTime(Infinity);
+    expect(() => scheduler.tick()).toThrow(InvalidAudioTimeError);
+  });
+
+  it('propagates sink errors and does not retry the event', () => {
+    scheduler.start();
+    scheduler.schedule(createEvent('fail-event', 10.000));
+    timeSource.setCurrentTime(10.000);
+    
+    // Make sink throw
+    sink.schedule = () => { throw new Error('Sink failure'); };
+    
+    expect(() => scheduler.tick()).toThrow('Sink failure');
+    
+    // Restore sink and check queue is empty of the failed event
+    sink.schedule = (e) => sink.scheduledEvents.push(e);
+    const result = scheduler.tick();
+    expect(result.scheduled).toHaveLength(0);
+    expect(result.late).toHaveLength(0);
+
+    // The event is permanently consumed/terminal, so we can reuse the ID
+    expect(() => scheduler.schedule(createEvent('fail-event', 10.100))).not.toThrow();
   });
 });

@@ -17,11 +17,15 @@ The Audio Scheduler bridges deterministic musical time and the physical audio la
 
 ## Tick Semantics
 When `tick()` is called:
-1. `currentTime` is retrieved from `AudioTimeSource`.
+1. `currentTime` is retrieved from `AudioTimeSource`. It is strictly validated to ensure it is a finite, non-negative number.
 2. A scheduling window is defined as `[currentTime, currentTime + lookahead]`.
 3. All pending events with `time <= windowEnd` are popped.
 4. If `time < currentTime`, it is placed in the `late` array.
 5. If `time >= currentTime`, it is submitted to the `AudioEventSink` and placed in the `scheduled` array.
+
+## Error Handling & Failures
+- **Audio Time Source**: If the time source returns an invalid value (NaN, Infinity, or negative), the scheduler throws an `InvalidAudioTimeError` immediately and does not process events.
+- **Sink Failures**: If `sink.schedule(event)` throws an error, the error propagates synchronously to the caller of `tick()`. The event is considered permanently consumed/terminal (the scheduler does not automatically retry it, nor does it swallow the error).
 
 ## Integration
 A future `SchedulerDriver` package will be responsible for creating an interval (e.g., Worker loop) and calling `tick()` repeatedly.
