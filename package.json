@@ -1,0 +1,17 @@
+{
+  "name": "precision-loop",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -b packages/musical-clock/tsconfig.json"
+  },
+  "devDependencies": {
+    "fast-check": "^3.16.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.4.0"
+  }
+}
