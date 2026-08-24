@@ -1,0 +1,13 @@
+{
+  "name": "@precision-loop/audio-scheduler",
+  "version": "0.1.0",
+  "description": "Audio Scheduler for Precision Loop",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@precision-loop/musical-clock": "*"
+  }
+}

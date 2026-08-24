@@ -75,3 +75,52 @@ precision-loop/
 ├── package.json
 ├── tsconfig.json
 └── AGENTS.md
+
+
+---
+
+# Current Development Phase
+
+The Musical Clock v0.1 has been completed and verified.
+
+The current development target is:
+
+## Audio Scheduler v0.1
+
+Implementation specification:
+
+`docs/specs/audio-scheduler-implementation-spec.md`
+
+The Audio Scheduler must remain strictly separated from:
+
+- Web Audio
+- AudioContext
+- AudioWorklet
+- microphone I/O
+- recording
+- playback
+- DSP
+- UI
+- persistence
+- networking
+
+The Scheduler Core is manually driven through `tick()`.
+
+It must NOT own:
+
+- setInterval
+- setTimeout
+- requestAnimationFrame
+- Worker loops
+- AudioContext lifecycle
+
+A future Scheduler Driver will own recurring invocation.
+
+The Scheduler Core must use abstractions for:
+
+- audio time source
+- audio event sink
+
+so it can be tested deterministically without a browser or real audio hardware.
+
+Do not implement the Web Audio adapter during Audio Scheduler v0.1.

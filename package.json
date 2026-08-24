@@ -7,7 +7,7 @@
   ],
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc -b packages/musical-clock/tsconfig.json",
+    "typecheck": "tsc -b",
     "build": "npm run build --workspaces --if-present"
   },
   "devDependencies": {

@@ -4,6 +4,9 @@
     "outDir": "dist",
     "rootDir": "src"
   },
+  "references": [
+    { "path": "../musical-clock" }
+  ],
   "include": ["src/**/*"],
   "exclude": ["node_modules", "tests/**/*"]
 }
