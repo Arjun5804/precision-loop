@@ -7,7 +7,8 @@
   ],
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc -b packages/musical-clock/tsconfig.json"
+    "typecheck": "tsc -b packages/musical-clock/tsconfig.json",
+    "build": "npm run build --workspaces --if-present"
   },
   "devDependencies": {
     "fast-check": "^3.16.0",
