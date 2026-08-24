@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { AudioScheduler } from '../src/scheduler.js';
 import { FakeAudioTimeSource, TestAudioEventSink } from './fakes.js';
 import { SchedulerState, ScheduledEvent } from '../src/types.js';
-import { DuplicateEventIdError, InvalidLookaheadError, InvalidAudioTimeError } from '../src/errors.js';
+import { DuplicateEventIdError, InvalidLookaheadError, InvalidAudioTimeError, InvalidEventError } from '../src/errors.js';
 
 describe('AudioScheduler', () => {
   let timeSource: FakeAudioTimeSource;
@@ -67,17 +67,55 @@ describe('AudioScheduler', () => {
     expect(sink.scheduledEvents).toHaveLength(0);
   });
 
-  it('prevents scheduling the same ID again even after submission', () => {
+  it('allows scheduling the same ID again after submission', () => {
     scheduler.schedule(createEvent('1', 10.000));
     timeSource.setCurrentTime(10.000);
     scheduler.tick();
     
-    expect(() => scheduler.schedule(createEvent('1', 10.050))).toThrow(DuplicateEventIdError);
+    scheduler.schedule(createEvent('1', 10.050));
+    expect(scheduler.cancel('1')).toBe(true);
   });
 
   it('validates event properties', () => {
     expect(() => scheduler.schedule(createEvent('1', -1))).toThrow(InvalidAudioTimeError);
-    expect(() => scheduler.schedule({ id: '', time: 1.0, type: 'x', payload: null })).toThrow('Event ID cannot be empty');
+    expect(() => scheduler.schedule({ id: '', time: 1.0, type: 'x', payload: null })).toThrow(InvalidEventError);
+  });
+
+  it('does not reschedule late events (regression)', () => {
+    const s = new AudioScheduler(timeSource, sink, { lookahead: 0.025 });
+    s.start();
+    
+    s.schedule(createEvent('late-evt', 10.050));
+    
+    // tick at 10.000 -> remains pending
+    timeSource.setCurrentTime(10.000);
+    const result1 = s.tick();
+    expect(result1.scheduled).toHaveLength(0);
+    expect(result1.late).toHaveLength(0);
+    
+    // tick at 10.100 -> late/missed, NOT rescheduled
+    timeSource.setCurrentTime(10.100);
+    const result2 = s.tick();
+    expect(result2.late.map(e => e.id)).toEqual(['late-evt']);
+    expect(result2.scheduled).toHaveLength(0);
+    expect(sink.scheduledEvents).toHaveLength(0);
+  });
+
+  it('processes pending events after start() but not while STOPPED', () => {
+    scheduler.stop();
+    scheduler.schedule(createEvent('stop-evt', 10.000));
+    timeSource.setCurrentTime(10.000);
+    
+    // tick while STOPPED -> not submitted
+    const result1 = scheduler.tick();
+    expect(result1.scheduled).toHaveLength(0);
+    expect(sink.scheduledEvents).toHaveLength(0);
+    
+    // tick after start() -> processed
+    scheduler.start();
+    const result2 = scheduler.tick();
+    expect(result2.scheduled.map(e => e.id)).toEqual(['stop-evt']);
+    expect(sink.scheduledEvents.map(e => e.id)).toEqual(['stop-evt']);
   });
 
   it('supports cancellation before scheduling', () => {

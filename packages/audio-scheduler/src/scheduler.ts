@@ -10,7 +10,8 @@ import {
   InvalidLookaheadError, 
   InvalidSchedulerStateError,
   InvalidAudioTimeError,
-  DuplicateEventIdError
+  DuplicateEventIdError,
+  InvalidEventError
 } from './errors.js';
 
 export interface AudioSchedulerConfig {
@@ -22,9 +23,6 @@ export class AudioScheduler {
   private state: SchedulerState = SchedulerState.STOPPED;
   private queue = new EventQueue();
   private lookahead: number;
-  
-  // Track all IDs to prevent duplicate submissions or re-additions
-  private knownEventIds = new Set<string>();
 
   constructor(
     private timeSource: AudioTimeSource,
@@ -55,17 +53,13 @@ export class AudioScheduler {
       throw new InvalidAudioTimeError('Event time must be a finite, non-negative number.');
     }
     if (!event.id) {
-      throw new Error('Event ID cannot be empty.');
+      throw new InvalidEventError('Event ID cannot be empty.');
     }
     if (!event.type) {
-      throw new Error('Event type cannot be empty.');
+      throw new InvalidEventError('Event type cannot be empty.');
     }
     
-    if (this.knownEventIds.has(event.id)) {
-      throw new DuplicateEventIdError(event.id);
-    }
-    
-    this.knownEventIds.add(event.id);
+    // The EventQueue enforces uniqueness for currently active/pending events.
     this.queue.add(event);
   }
 
@@ -75,7 +69,6 @@ export class AudioScheduler {
 
   cancelAll(): void {
     this.queue.removeAll();
-    // Note: We retain knownEventIds so previously submitted/cancelled IDs can't be reused.
   }
 
   tick(): TickResult {
