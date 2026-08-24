@@ -1,5 +1,5 @@
 import { Tempo, TimeSignature, MusicalPosition, SubdivisionsConfig } from "./types.js";
-import { validateTempo, validateTimeSignature, validateSampleRate, validateSubdivisionsConfig, InvalidPositionError } from "./validation.js";
+import { validateTempo, validateTimeSignature, validateSampleRate, validateSubdivisionsConfig, InvalidPositionError, validateFrames } from "./validation.js";
 
 /**
  * Returns the duration of a single notated beat in seconds.
@@ -93,7 +93,20 @@ export function positionToSeconds(
 
 /**
  * Converts exact mathematical seconds to a zero-based MusicalPosition.
- * Uses strict coordinate constraints.
+ * 
+ * SEMANTICS (Grid Quantization):
+ * This function performs a floor/previous-grid quantization. It returns the greatest 
+ * discrete musical grid position (based on the subdivision resolution) that occurs 
+ * at or before the specified seconds.
+ * 
+ * EPSILON RATIONALE:
+ * Because JavaScript uses IEEE-754 floats, accumulating time or multiplying ratios 
+ * often results in values like 1.9999999999999998 instead of exactly 2.0. 
+ * If a time is mathematically intended to land exactly on a grid boundary, 
+ * this micro-deficit would cause `Math.floor` to incorrectly snap back to the previous grid position.
+ * We add a microscopic EPSILON (1e-9) to `seconds` before flooring, effectively 
+ * ensuring that floating-point approximations of boundary values snap forward 
+ * onto the intended grid line, while times genuinely between grids floor correctly.
  */
 export function secondsToPosition(
   seconds: number,
@@ -121,19 +134,23 @@ export function secondsToPosition(
 }
 
 /**
- * Converts exact mathematical seconds to integer sample frames using Math.round().
+ * Converts exact mathematical seconds to an integer sample frame using Math.round().
  * This provides the nearest-frame quantization for a given sample rate.
  * The audio engine is responsible for boundary logic; this is purely mathematical rounding.
  */
 export function secondsToFrames(seconds: number, sampleRate: number): number {
+  if (seconds < 0) {
+    throw new Error("Seconds cannot be negative.");
+  }
   validateSampleRate(sampleRate);
   return Math.round(seconds * sampleRate);
 }
 
 /**
- * Converts integer sample frames back to exact mathematical seconds.
+ * Converts an integer sample frame position back to exact mathematical seconds.
  */
 export function framesToSeconds(frames: number, sampleRate: number): number {
+  validateFrames(frames);
   validateSampleRate(sampleRate);
   return frames / sampleRate;
 }

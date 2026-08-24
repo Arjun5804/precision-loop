@@ -38,39 +38,90 @@ describe("Musical Clock calculations", () => {
     });
   });
 
-  describe("Position Conversions", () => {
-    it("converts position to seconds in 120 BPM 4/4", () => {
-      // 1 bar = 2.0s, 1 beat = 0.5s, 1 sub (1/4 beat) = 0.125s
-      // pos (bar 1, beat 1, sub 2) = 2.0 + 0.5 + 0.25 = 2.75s
-      const sec = positionToSeconds({ bar: 1, beat: 1, subdivision: 2 }, 120, ts44, conf16);
-      expect(sec).toBe(2.75);
+  describe("Position Conversions (Grid Boundaries & Quantization)", () => {
+    const EPSILON = 1e-9;
+    const subDur = 0.125; // in 120 BPM 4/4 with subPerBeat=4
+    const beatDur = 0.5;
+    const barDur = 2.0;
+
+    it("exact subdivision boundary", () => {
+      // Bar 0, Beat 0, Sub 1 = 0.125s
+      const sec = 0.125;
+      expect(secondsToPosition(sec, 120, ts44, conf16)).toEqual({ bar: 0, beat: 0, subdivision: 1 });
     });
 
-    it("converts seconds to position in 120 BPM 4/4", () => {
-      const pos = secondsToPosition(2.75, 120, ts44, conf16);
-      expect(pos).toEqual({ bar: 1, beat: 1, subdivision: 2 });
+    it("just before subdivision boundary", () => {
+      // 0.125 - small_amount (but > EPSILON) should quantize down to Sub 0
+      const sec = 0.125 - EPSILON * 2;
+      expect(secondsToPosition(sec, 120, ts44, conf16)).toEqual({ bar: 0, beat: 0, subdivision: 0 });
     });
 
-    it("boundary test: multiple bars exactly", () => {
-      const sec = positionToSeconds({ bar: 4, beat: 0, subdivision: 0 }, 120, ts44, conf16);
-      expect(sec).toBe(8.0);
+    it("just after subdivision boundary", () => {
+      const sec = 0.125 + EPSILON * 2;
+      expect(secondsToPosition(sec, 120, ts44, conf16)).toEqual({ bar: 0, beat: 0, subdivision: 1 });
+    });
+
+    it("exact beat boundary", () => {
+      // Bar 0, Beat 1, Sub 0 = 0.5s
+      expect(secondsToPosition(beatDur, 120, ts44, conf16)).toEqual({ bar: 0, beat: 1, subdivision: 0 });
+    });
+
+    it("just before beat boundary", () => {
+      // 0.5 - small_amount should be Bar 0, Beat 0, Sub 3
+      expect(secondsToPosition(beatDur - EPSILON * 2, 120, ts44, conf16)).toEqual({ bar: 0, beat: 0, subdivision: 3 });
+    });
+
+    it("just after beat boundary", () => {
+      expect(secondsToPosition(beatDur + EPSILON * 2, 120, ts44, conf16)).toEqual({ bar: 0, beat: 1, subdivision: 0 });
+    });
+
+    it("exact bar boundary", () => {
+      // Bar 1, Beat 0, Sub 0 = 2.0s
+      expect(secondsToPosition(barDur, 120, ts44, conf16)).toEqual({ bar: 1, beat: 0, subdivision: 0 });
+    });
+
+    it("just before bar boundary", () => {
+      // 2.0 - small_amount should be Bar 0, Beat 3, Sub 3
+      expect(secondsToPosition(barDur - EPSILON * 2, 120, ts44, conf16)).toEqual({ bar: 0, beat: 3, subdivision: 3 });
+    });
+
+    it("just after bar boundary", () => {
+      expect(secondsToPosition(barDur + EPSILON * 2, 120, ts44, conf16)).toEqual({ bar: 1, beat: 0, subdivision: 0 });
+    });
+
+    it("demonstrates position -> seconds -> position is an exact round trip", () => {
+      const pos = { bar: 3, beat: 2, subdivision: 1 };
+      const seconds = positionToSeconds(pos, 120, ts44, conf16);
+      const returnedPos = secondsToPosition(seconds, 120, ts44, conf16);
+      expect(returnedPos).toEqual(pos);
+    });
+
+    it("demonstrates arbitrary seconds -> position -> seconds quantizes (does not return original seconds)", () => {
+      const arbitrarySeconds = 1.05; // Somewhere between 1.0 (Beat 2, Sub 0) and 1.125 (Beat 2, Sub 1)
+      const pos = secondsToPosition(arbitrarySeconds, 120, ts44, conf16);
+      expect(pos).toEqual({ bar: 0, beat: 2, subdivision: 0 });
       
-      const pos = secondsToPosition(8.0, 120, ts44, conf16);
-      expect(pos).toEqual({ bar: 4, beat: 0, subdivision: 0 });
+      const quantizedSeconds = positionToSeconds(pos, 120, ts44, conf16);
+      expect(quantizedSeconds).toBe(1.0); // Floored to the grid
+      expect(quantizedSeconds).not.toBe(arbitrarySeconds);
     });
   });
 
-  describe("Frame Conversions", () => {
+  describe("Frame Conversions and Validation", () => {
     it("converts seconds to frames (rounding)", () => {
-      // 1.5 seconds at 48000 Hz = 72000
       expect(secondsToFrames(1.5, 48000)).toBe(72000);
-      
-      // Quantization: nearest integer
-      expect(secondsToFrames(1.00001, 48000)).toBe(48000);
+      expect(secondsToFrames(1.00001, 48000)).toBe(48000); // nearest integer
     });
 
     it("converts frames to seconds", () => {
       expect(framesToSeconds(72000, 48000)).toBe(1.5);
+    });
+
+    it("rejects invalid frame inputs", () => {
+      expect(() => framesToSeconds(-10, 48000)).toThrow(); // negative
+      expect(() => framesToSeconds(10.5, 48000)).toThrow(); // fractional
+      expect(() => framesToSeconds(NaN, 48000)).toThrow(); // NaN
+      expect(() => framesToSeconds(Infinity, 48000)).toThrow(); // Infinity
     });
   });
 

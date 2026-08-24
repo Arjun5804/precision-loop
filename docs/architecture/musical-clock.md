@@ -28,10 +28,20 @@ Subdivisions represent the lowest resolution of a single beat.
 - E.g., `subdivisionsPerBeat: 4` in a 4/4 signature represents 16th notes.
 - This is purely an integer subdivision of mathematical time and does NOT encode swing, groove, accent patterns, or metronome sounds.
 
-### Time Conversions
-We can convert between arbitrary coordinates and mathematical seconds. Mathematical seconds use pure floating-point arithmetic.
+### Time Conversions and Grid Quantization
+We can convert between arbitrary coordinates and mathematical seconds using pure floating-point arithmetic.
 - `quarterNoteDuration = 60 / BPM`
 - `beatDuration = quarterNoteDuration * (4 / denominator)`
+
+**Grid Quantization**:
+Converting arbitrary seconds into a `MusicalPosition` via `secondsToPosition` uses **floor/previous-grid quantization**. It returns the greatest discrete musical grid position at or before the supplied time.
+
+**Floating-Point Boundary Handling (EPSILON)**:
+JavaScript IEEE-754 floats cause micro-deficits (e.g. `1.9999999999999998` instead of `2.0`). When finding grid coordinates, a microscopic EPSILON (`1e-9`) is added before the flooring operation. This ensures that floating-point approximations of boundary values correctly snap forward onto the intended grid line, preventing off-by-one errors during exact grid round-trips.
+
+**Round-trip Semantics**:
+- `position -> seconds -> position`: This is an exact grid round trip.
+- `arbitrary seconds -> position -> seconds`: This represents quantization. It snaps arbitrary time to the grid and will therefore NOT necessarily return the original seconds value.
 
 ### Rounding Policy and Frame Conversion
 When converting exact mathematical seconds into integer sample frames, we use explicit rounding:

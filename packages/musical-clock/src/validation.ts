@@ -28,6 +28,13 @@ export class InvalidSampleRateError extends MusicalClockError {
   }
 }
 
+export class InvalidFrameError extends MusicalClockError {
+  constructor(frames: number) {
+    super(`Invalid frame position: ${frames}. Must be a non-negative finite integer.`);
+    this.name = "InvalidFrameError";
+  }
+}
+
 export class InvalidPositionError extends MusicalClockError {
   constructor(pos: Partial<MusicalPosition>, reason: string) {
     super(`Invalid musical position (${pos.bar}:${pos.beat}:${pos.subdivision}): ${reason}`);
@@ -55,6 +62,12 @@ export function validateTimeSignature(signature: TimeSignature): void {
 export function validateSampleRate(sampleRate: number): void {
   if (typeof sampleRate !== "number" || !Number.isFinite(sampleRate) || sampleRate <= 0) {
     throw new InvalidSampleRateError(sampleRate);
+  }
+}
+
+export function validateFrames(frames: number): void {
+  if (typeof frames !== "number" || !Number.isInteger(frames) || frames < 0) {
+    throw new InvalidFrameError(frames);
   }
 }
 

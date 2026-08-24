@@ -29,8 +29,14 @@ const seconds = clock.positionToSeconds({ bar: 3, beat: 0, subdivision: 0 }); //
 const frames = clock.secondsToFrames(seconds, 48000);
 ```
 
+## Grid Quantization and Round-trips
+- `positionToSeconds(position)`: Calculates exact mathematical seconds.
+- `secondsToPosition(seconds)`: Performs **floor/previous-grid quantization** to find the greatest discrete musical position at or before the specified seconds.
+- **Valid grid round-trips**: `position -> seconds -> position` will always return the exact original grid position.
+- **Quantization**: `arbitrary seconds -> position -> seconds` will quantize the time to the musical grid and generally *will not* return the original arbitrary seconds.
+
 ## Precision Notes
-The `secondsToFrames` conversion uses `Math.round()` to explicitly quantize to the nearest integer sample frame.
+The `secondsToFrames` conversion uses `Math.round()` to explicitly quantize to the nearest integer sample frame. The `secondsToPosition` function uses a microscopic EPSILON to handle floating-point accumulation deficits precisely on boundaries.
 
 ## Testing
 Run unit and property-based tests via:
