@@ -67,25 +67,28 @@ describe('AudioScheduler', () => {
     expect(sink.scheduledEvents).toHaveLength(0);
   });
 
-  it('allows ID reuse after cancellation, late, or scheduled states', () => {
-    // 1. reuse after cancel
+  it('prevents ID reuse permanently for the lifetime of the scheduler', () => {
+    // 1. no reuse after cancel
     scheduler.schedule(createEvent('reuse-id', 10.000));
     scheduler.cancel('reuse-id');
-    expect(() => scheduler.schedule(createEvent('reuse-id', 10.100))).not.toThrow();
+    expect(() => scheduler.schedule(createEvent('reuse-id', 10.100))).toThrow(DuplicateEventIdError);
     
-    // 2. reuse after cancelAll
+    // 2. no reuse after cancelAll
+    scheduler.schedule(createEvent('reuse-id-2', 10.200));
     scheduler.cancelAll();
-    expect(() => scheduler.schedule(createEvent('reuse-id', 10.200))).not.toThrow();
+    expect(() => scheduler.schedule(createEvent('reuse-id-2', 10.300))).toThrow(DuplicateEventIdError);
     
-    // 3. reuse after scheduled
-    timeSource.setCurrentTime(10.200);
-    scheduler.tick(); // schedules 'reuse-id'
-    expect(() => scheduler.schedule(createEvent('reuse-id', 10.300))).not.toThrow();
+    // 3. no reuse after scheduled
+    scheduler.schedule(createEvent('reuse-id-3', 10.400));
+    timeSource.setCurrentTime(10.400);
+    scheduler.tick(); // schedules 'reuse-id-3'
+    expect(() => scheduler.schedule(createEvent('reuse-id-3', 10.500))).toThrow(DuplicateEventIdError);
     
-    // 4. reuse after late
-    timeSource.setCurrentTime(10.400); // 10.300 is late now
-    scheduler.tick(); // pops 'reuse-id' as late
-    expect(() => scheduler.schedule(createEvent('reuse-id', 10.500))).not.toThrow();
+    // 4. no reuse after late
+    scheduler.schedule(createEvent('reuse-id-4', 10.600));
+    timeSource.setCurrentTime(10.700); // 10.600 is late now
+    scheduler.tick(); // pops 'reuse-id-4' as late
+    expect(() => scheduler.schedule(createEvent('reuse-id-4', 10.800))).toThrow(DuplicateEventIdError);
   });
 
   it('validates event properties', () => {
@@ -173,13 +176,13 @@ describe('AudioScheduler', () => {
     
     expect(() => scheduler.tick()).toThrow('Sink failure');
     
-    // Restore sink and check queue is empty of the failed event
+    // The event is permanently consumed/terminal, we CANNOT reuse the ID
+    expect(() => scheduler.schedule(createEvent('fail-event', 10.100))).toThrow(DuplicateEventIdError);
+    
+    // Restore sink and check queue is empty
     sink.schedule = (e) => sink.scheduledEvents.push(e);
     const result = scheduler.tick();
     expect(result.scheduled).toHaveLength(0);
     expect(result.late).toHaveLength(0);
-
-    // The event is permanently consumed/terminal, so we can reuse the ID
-    expect(() => scheduler.schedule(createEvent('fail-event', 10.100))).not.toThrow();
   });
 });

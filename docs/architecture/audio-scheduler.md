@@ -6,7 +6,7 @@ The Audio Scheduler bridges deterministic musical time and the physical audio la
 - Event queuing and deterministic chronological ordering.
 - Scheduling window evaluation via lookahead.
 - Detecting and reporting late events.
-- Preventing duplicate submissions of identical active events. Event IDs must be unique among currently pending events but may be reused once an event reaches a terminal state (cancelled, scheduled, or missed).
+- Preventing duplicate submissions of identical events. Event IDs must be globally unique for the lifetime of an AudioScheduler instance, including after cancellation or submission. This is an intentional safety invariant.
 - Supporting cancellation of pending events.
 
 ## Non-Responsibilities

@@ -23,6 +23,9 @@ export class AudioScheduler {
   private state: SchedulerState = SchedulerState.STOPPED;
   private queue = new EventQueue();
   private lookahead: number;
+  
+  // Track all IDs to prevent duplicate submissions or re-additions globally
+  private knownEventIds = new Set<string>();
 
   constructor(
     private timeSource: AudioTimeSource,
@@ -59,7 +62,11 @@ export class AudioScheduler {
       throw new InvalidEventError('Event type cannot be empty.');
     }
     
-    // The EventQueue enforces uniqueness for currently active/pending events.
+    if (this.knownEventIds.has(event.id)) {
+      throw new DuplicateEventIdError(event.id);
+    }
+    
+    this.knownEventIds.add(event.id);
     this.queue.add(event);
   }
 
