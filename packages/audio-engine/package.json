@@ -1,0 +1,13 @@
+{
+  "name": "@precision-loop/audio-engine",
+  "version": "0.1.0",
+  "description": "Foundational browser audio runtime for Precision Loop",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@precision-loop/audio-scheduler": "^0.1.0"
+  }
+}

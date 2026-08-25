@@ -124,3 +124,54 @@ The Scheduler Core must use abstractions for:
 so it can be tested deterministically without a browser or real audio hardware.
 
 Do not implement the Web Audio adapter during Audio Scheduler v0.1.
+
+# Current Development Phase
+
+Musical Clock v0.1: COMPLETE
+Audio Scheduler v0.1: COMPLETE
+CI: ACTIVE
+
+Current target:
+
+## Web Audio Foundation / Audio Engine v0.1
+
+Specification:
+
+`docs/specs/audio-engine-implementation-spec.md`
+
+The Audio Engine is the browser-specific Web Audio boundary.
+
+It owns:
+
+- AudioContext lifecycle
+- root audio graph
+- audio runtime information
+- device discovery
+- output-device capability handling
+- AudioWorklet infrastructure
+
+It does NOT own:
+
+- recording
+- looping
+- metronome
+- effects
+- mixing
+- exporting
+- React UI
+- persistence
+
+Important constraints:
+
+1. One AudioContext per AudioEngine instance.
+2. AudioContext creation is explicit and asynchronous.
+3. Do not assume 44.1 kHz or 48 kHz.
+4. Do not automatically request microphone permission during initialization.
+5. Do not assume custom output-device selection is universally supported.
+6. Do not create timers in the Audio Engine.
+7. Do not duplicate Audio Scheduler timing logic.
+8. The Scheduler's AudioTimeSource will eventually use AudioContext.currentTime.
+9. AudioWorklet may be initialized for infrastructure verification, but recording/DSP is out of scope.
+10. Do not hard-code a 128-frame AudioWorklet render quantum.
+11. Keep browser-specific APIs behind small adapters for deterministic testing.
+12. Do not expose raw AudioContext or internal AudioNodes as the default public API.
