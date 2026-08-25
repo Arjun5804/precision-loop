@@ -84,4 +84,46 @@ describe('recording-processor', () => {
         // No more messages after cancel
         expect(postMessageMock).toHaveBeenCalledTimes(1);
     });
+
+    it('should handle start/end inside same block', () => {
+        processor.port.onmessage({ data: { type: 'ARM', startFrame: 50, endFrame: 100 } });
+        (global as any).currentFrame = 0;
+        
+        processor.process(createInput(0, 128), [], {});
+        
+        expect(postMessageMock).toHaveBeenCalledTimes(2); // CHUNK then COMPLETED
+        expect(postMessageMock.mock.calls[0][0].type).toBe('CHUNK');
+        expect(postMessageMock.mock.calls[0][0].frameCount).toBe(50); // 100 - 50
+        expect(postMessageMock.mock.calls[1][0].type).toBe('COMPLETED');
+    });
+
+    it('should correctly process 64 frame blocks', () => {
+        processor.port.onmessage({ data: { type: 'ARM', startFrame: 64, endFrame: 128 } });
+        (global as any).currentFrame = 0;
+        processor.process(createInput(0, 64), [], {});
+        expect(postMessageMock).not.toHaveBeenCalled();
+
+        (global as any).currentFrame = 64;
+        processor.process(createInput(64, 64), [], {});
+        expect(postMessageMock).toHaveBeenCalledTimes(2);
+        expect(postMessageMock.mock.calls[0][0].frameCount).toBe(64);
+        expect(postMessageMock.mock.calls[1][0].type).toBe('COMPLETED');
+    });
+
+    it('should strictly exclude the end frame (half-open window)', () => {
+        processor.port.onmessage({ data: { type: 'ARM', startFrame: 127, endFrame: 128 } });
+        (global as any).currentFrame = 0;
+        processor.process(createInput(0, 128), [], {});
+        
+        expect(postMessageMock).toHaveBeenCalledTimes(2);
+        expect(postMessageMock.mock.calls[0][0].frameCount).toBe(1); // Only frame 127
+        const chunkData = new Float32Array(postMessageMock.mock.calls[0][0].buffer);
+        expect(chunkData[0]).toBe(127); 
+        expect(postMessageMock.mock.calls[1][0].type).toBe('COMPLETED');
+    });
+
+    it('should support error path messaging', () => {
+        processor.port.postMessage({ type: 'ERROR', code: 'TEST', message: 'test' } as any);
+        expect(postMessageMock).toHaveBeenCalledWith({ type: 'ERROR', code: 'TEST', message: 'test' });
+    });
 });

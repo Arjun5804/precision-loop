@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { RecordingEngine } from '../../src/RecordingEngine';
-import { InvalidWindowError, InvalidStateError, IncompleteTakeError } from '../../src/errors';
+import { InvalidWindowError, InvalidStateError, FinalizationFailureError } from '../../src/errors';
 
 describe('RecordingEngine', () => {
     let mockContext: any;
@@ -44,7 +44,7 @@ describe('RecordingEngine', () => {
         handleMsg({ type: 'CHUNK', buffer: fakeBuffer, frameCount: 40000 });
         handleMsg({ type: 'COMPLETED' });
         
-        await expect(p).rejects.toThrow(IncompleteTakeError);
+        await expect(p).rejects.toThrow(FinalizationFailureError);
     });
 
     it('should throw if module fails to load', async () => {

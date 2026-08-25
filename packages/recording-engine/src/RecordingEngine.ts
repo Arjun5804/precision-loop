@@ -5,7 +5,7 @@ import {
   DeviceUnavailableError, 
   InvalidWindowError,
   BufferLimitExceededError,
-  IncompleteTakeError
+  FinalizationFailureError
 } from './errors';
 import { timeToFrame } from './utils/frame-math';
 import { RecordingWorkletNode } from './RecordingWorkletNode';
@@ -198,7 +198,7 @@ export class RecordingEngine {
     const expectedFrameCount = endFrame - startFrame;
 
     if (this.currentFrameCount !== expectedFrameCount) {
-      throw new IncompleteTakeError(`Expected ${expectedFrameCount} frames, but got ${this.currentFrameCount}`);
+      throw new FinalizationFailureError(`Expected ${expectedFrameCount} frames, but got ${this.currentFrameCount}`);
     }
 
     const totalFrames = this.currentFrameCount;
