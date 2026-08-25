@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src"
+  },
+  "references": [
+    { "path": "../musical-clock" },
+    { "path": "../audio-scheduler" },
+    { "path": "../recording-engine" }
+  ],
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "tests/**/*"]
+}

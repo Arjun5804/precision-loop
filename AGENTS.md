@@ -236,3 +236,55 @@ Critical invariants:
 12. Device failures must not silently switch to another input.
 13. A completed take must satisfy all RecordedTake frame/channel invariants.
 14. Browser integration testing is required before declaring the subsystem complete.
+
+
+### Transport
+
+`@precision-loop/transport` is the musical-time orchestration layer.
+
+It coordinates:
+
+- `@precision-loop/musical-clock`
+- `@precision-loop/audio-scheduler`
+- `@precision-loop/recording-engine`
+
+Transport converts user-level musical intent such as:
+
+- tempo
+- time signature
+- count-in bars
+- recording duration
+
+into deterministic audio-time session plans.
+
+Transport MUST NOT:
+
+- own or close the `AudioContext`
+- capture or manipulate PCM
+- perform DSP
+- implement click audio generation
+- use `setTimeout`, `setInterval`, `Date.now`, `performance.now`, or
+  `requestAnimationFrame` for audio timing
+- duplicate Musical Clock timing formulas
+- duplicate Audio Scheduler scheduling logic
+- depend on React or other UI frameworks
+
+Musical Clock remains authoritative for musical-time mathematics.
+Audio Scheduler remains authoritative for audio-time scheduling.
+Recording Engine remains authoritative for exact PCM capture.
+
+Transport owns session orchestration, state transitions, count-in event
+generation, recording-window planning, cancellation, and coordination
+between these subsystems.
+
+The authoritative Transport specification is:
+
+`docs/specs/transport-implementation-spec.md`
+
+The architectural rationale is:
+
+`docs/architecture/transport.md`
+
+The architectural decision is:
+
+`docs/architecture/adr/005-transport-musical-time-orchestration.md`
