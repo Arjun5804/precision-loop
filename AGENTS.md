@@ -175,3 +175,64 @@ Important constraints:
 10. Do not hard-code a 128-frame AudioWorklet render quantum.
 11. Keep browser-specific APIs behind small adapters for deterministic testing.
 12. Do not expose raw AudioContext or internal AudioNodes as the default public API.
+
+## Current Development Phase
+
+Musical Clock v0.1: COMPLETE
+Audio Scheduler v0.1: COMPLETE
+Audio Engine v0.1: COMPLETE
+AudioWorklet build pipeline: COMPLETE
+Browser Audio Engine smoke test: COMPLETE
+
+Current target:
+
+## Recording Engine v0.1
+
+Specification:
+
+`docs/specs/recording-engine-implementation-spec.md`
+
+The Recording Engine captures raw PCM audio from a selected microphone
+for an exact audio-time window.
+
+It owns:
+
+- microphone stream
+- recording-specific AudioNodes
+- recording AudioWorklet
+- recording state
+- PCM buffering
+- finalization
+- cancellation
+- recording limits
+
+It does NOT own:
+
+- BPM
+- time signature
+- bars
+- beats
+- musical timing
+- scheduling
+- playback
+- effects
+- mixing
+- persistence
+- UI
+
+Critical invariants:
+
+1. Capture windows are half-open: `[startTime, endTime)`.
+2. Internal PCM windows are half-open: `[startFrame, endFrame)`.
+3. Audio-time to frame conversion uses the canonical `Math.round(time * sampleRate)` policy.
+4. The actual AudioContext sample rate is authoritative.
+5. No wall-clock timers determine audio boundaries.
+6. MediaRecorder is not the core recording mechanism.
+7. AudioWorklet is used for raw PCM capture.
+8. Do not require SharedArrayBuffer or cross-origin isolation for v0.1.
+9. One active recording is allowed per Recording Engine instance.
+10. Recording must not automatically enable microphone monitoring.
+11. The shared AudioContext is owned by AudioEngine and must never be closed by RecordingEngine.
+12. Device failures must not silently switch to another input.
+13. A completed take must satisfy all RecordedTake frame/channel invariants.
+14. Browser integration testing is required before declaring the subsystem complete.

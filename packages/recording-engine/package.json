@@ -1,0 +1,19 @@
+{
+  "name": "@precision-loop/recording-engine",
+  "version": "0.1.0",
+  "description": "Foundational recording runtime for Precision Loop",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc && tsc -p tsconfig.worklet.json",
+    "test": "vitest run",
+    "test:integration": "playwright test",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.worklet.json --noEmit"
+  },
+  "dependencies": {
+    "@precision-loop/audio-scheduler": "^0.1.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0"
+  }
+}
