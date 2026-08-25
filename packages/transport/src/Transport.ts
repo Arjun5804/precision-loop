@@ -3,13 +3,14 @@ import { AudioScheduler, ScheduledEvent } from '@precision-loop/audio-scheduler'
 import { RecordingEngine, RecordedTake, AudioTime } from '@precision-loop/recording-engine';
 import { TransportConfig, TransportPlan, TransportState, ClickEvent } from './types';
 import { planSession, validateConfig } from './planner';
-import { InvalidTransportStateError, DependencyError, SessionCancelledError } from './errors';
+import { InvalidTransportStateError, InvalidConfigurationError, DependencyError, SessionCancelledError } from './errors';
 
 export type TransportListener = (state: TransportState, plan: TransportPlan | null) => void;
 
 export class Transport {
   private _state: TransportState = 'IDLE';
   private currentPlan: TransportPlan | null = null;
+  private currentTake: RecordedTake | null = null;
   private generation: number = 0;
   private listeners: Set<TransportListener> = new Set();
   
@@ -40,6 +41,7 @@ export class Transport {
     const currentGeneration = ++this.generation;
     const plan = planSession(this.config, this.clock, sessionStartTime);
     this.currentPlan = plan;
+    this.currentTake = null;
     
     this.setState('ARMING');
 
@@ -69,23 +71,34 @@ export class Transport {
         throw new SessionCancelledError();
       }
 
+      this.currentTake = take;
       this.setState('COMPLETED');
-      // In a real application, we might emit the take or expose it on Transport
-      // For v0.1 we just successfully transition to COMPLETED.
-    } catch (err: any) {
-      if (err.name === 'SessionCancelledError') {
-        throw err;
+    } catch (err: unknown) {
+      if (err instanceof SessionCancelledError) {
+        throw err; // Expected cancellation, propagate without error state
       }
+      
+      // Concurrency check before changing state
       if (this.generation !== currentGeneration) {
         throw new SessionCancelledError();
       }
+
+      // Error path cleanup
+      this.generation++;
+      for (const event of plan.countInEvents) {
+        this.scheduler.cancel(this.getEventId(event, currentGeneration));
+      }
+      this.recordingEngine.cancel();
+      this.currentPlan = null;
+      this.currentTake = null;
       this.setState('ERROR');
       
-      // We wrap it in DependencyError if it's not a transport error
-      if (err.name !== 'InvalidTransportStateError' && err.name !== 'InvalidConfigurationError') {
-        throw new DependencyError('Dependency failed during session', err);
+      if (err instanceof InvalidTransportStateError || err instanceof InvalidConfigurationError) {
+        throw err;
       }
-      throw err;
+      
+      const cause = err instanceof Error ? err : new Error(String(err));
+      throw new DependencyError('Dependency failed during session', cause);
     }
   }
 
@@ -106,6 +119,7 @@ export class Transport {
 
     this.recordingEngine.cancel();
     this.currentPlan = null;
+    this.currentTake = null;
     this.setState('IDLE');
   }
 
@@ -115,6 +129,10 @@ export class Transport {
 
   public getPlan(): TransportPlan | null {
     return this.currentPlan;
+  }
+
+  public getTake(): RecordedTake | null {
+    return this.currentTake;
   }
 
   public subscribe(listener: TransportListener): () => void {

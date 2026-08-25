@@ -112,7 +112,61 @@ describe('Transport', () => {
     // In our fake, the resolveArm gets overwritten by the second session, 
     // so let's simulate the first one resolving its promise manually if we could.
     // However, the test structure means `stop()` already rejected the first one.
-    // The main point is `generation` protects it.
+    // Complete the FIRST session's promise
     await expect(startPromise1).rejects.toThrow();
+  });
+
+  describe('Time Signature Regressions', () => {
+    it('handles 3/4 time signature', async () => {
+      const config34: TransportConfig = { tempo: 120, timeSignature: { numerator: 3, denominator: 4 }, countInBars: 2, recordingBars: 4 };
+      const clock34 = new MusicalClock(120, { numerator: 3, denominator: 4 }, { subdivisionsPerBeat: 4 });
+      transport = new Transport(clock34, scheduler as any, recordingEngine as any);
+      transport.configure(config34);
+      
+      const startPromise = transport.start(10.0, 'worklet-url.js');
+      await Promise.resolve(); await Promise.resolve();
+      
+      const plan = transport.getPlan()!;
+      expect(plan.countInEvents.length).toBe(6); // 2 bars * 3 beats
+      expect(plan.recordingEndTime - plan.recordingStartTime).toBe(clock34.barsToSeconds(4)); // 4 bars = 12 beats = 6s
+      expect(plan.recordingStartTime).toBe(10.0 + clock34.barsToSeconds(2)); // 10.0 + 3s = 13.0
+      
+      transport.stop();
+      await expect(startPromise).rejects.toThrow();
+    });
+
+    it('handles 6/8 time signature', async () => {
+      const config68: TransportConfig = { tempo: 120, timeSignature: { numerator: 6, denominator: 8 }, countInBars: 2, recordingBars: 2 };
+      const clock68 = new MusicalClock(120, { numerator: 6, denominator: 8 }, { subdivisionsPerBeat: 2 });
+      transport = new Transport(clock68, scheduler as any, recordingEngine as any);
+      transport.configure(config68);
+      
+      const startPromise = transport.start(10.0, 'worklet-url.js');
+      await Promise.resolve(); await Promise.resolve();
+      
+      const plan = transport.getPlan()!;
+      expect(plan.countInEvents.length).toBe(12); // 2 bars * 6 beats
+      expect(plan.recordingEndTime - plan.recordingStartTime).toBe(clock68.barsToSeconds(2));
+      
+      transport.stop();
+      await expect(startPromise).rejects.toThrow();
+    });
+
+    it('handles 7/8 time signature', async () => {
+      const config78: TransportConfig = { tempo: 120, timeSignature: { numerator: 7, denominator: 8 }, countInBars: 1, recordingBars: 2 };
+      const clock78 = new MusicalClock(120, { numerator: 7, denominator: 8 }, { subdivisionsPerBeat: 2 });
+      transport = new Transport(clock78, scheduler as any, recordingEngine as any);
+      transport.configure(config78);
+      
+      const startPromise = transport.start(10.0, 'worklet-url.js');
+      await Promise.resolve(); await Promise.resolve();
+      
+      const plan = transport.getPlan()!;
+      expect(plan.countInEvents.length).toBe(7); // 1 bar * 7 beats
+      expect(plan.recordingEndTime - plan.recordingStartTime).toBe(clock78.barsToSeconds(2));
+      
+      transport.stop();
+      await expect(startPromise).rejects.toThrow();
+    });
   });
 });

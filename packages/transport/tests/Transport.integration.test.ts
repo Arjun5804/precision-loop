@@ -58,10 +58,14 @@ describe('Transport Integration with Real Dependencies', () => {
     timeSource.time = 9.9;
     scheduler.tick();
     expect(sink.events.length).toBe(1); // Only beat 0 (10.0) is in lookahead (9.9 + 0.1 = 10.0)
+    // Regression check: Transport state should NOT transition just because of sink submission
+    expect(transport.getState()).toBe('ACTIVE');
 
     timeSource.time = 10.4;
     scheduler.tick();
     expect(sink.events.length).toBe(2); // Beat 1 (10.5) is now in lookahead (10.4 + 0.1 = 10.5)
+    // Regression check: Transport state should STILL be ACTIVE
+    expect(transport.getState()).toBe('ACTIVE');
 
     // Complete the recording
     recordingEngine.simulateCompletion('final-take-abc');
