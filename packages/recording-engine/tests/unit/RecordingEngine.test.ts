@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { RecordingEngine } from '../../src/RecordingEngine';
-import { InvalidWindowError, InvalidStateError } from '../../src/errors';
+import { InvalidWindowError, InvalidStateError, IncompleteTakeError } from '../../src/errors';
 
 describe('RecordingEngine', () => {
     let mockContext: any;
@@ -22,12 +22,33 @@ describe('RecordingEngine', () => {
         expect(engine.state).toBe('IDLE');
     });
 
-    it('should reject arm if startFrame is in the past', async () => {
+    it('should reject arm if startFrame is too close (no lookahead)', async () => {
         engine['_state'] = 'READY'; // Force state for test
-        await expect(engine.arm({ startTime: 5, endTime: 6 })).rejects.toThrow(InvalidWindowError);
+        await expect(engine.arm({ startTime: 10.01, endTime: 11 })).rejects.toThrow(InvalidWindowError);
     });
     
     it('should reject arm if state is IDLE', async () => {
         await expect(engine.arm({ startTime: 15, endTime: 16 })).rejects.toThrow(InvalidStateError);
+    });
+
+    it('should handle finalization frame invariant', async () => {
+        engine['_state'] = 'READY';
+        (engine as any).workletNode = { arm: vi.fn(), cancel: vi.fn(), disconnect: vi.fn() };
+        const p = engine.arm({ startTime: 11, endTime: 12 }); // 1 sec = 48000 frames
+        
+        // Mock worklet message
+        const handleMsg = (engine as any).handleWorkletMessage.bind(engine);
+        
+        // Provide wrong number of frames
+        const fakeBuffer = new ArrayBuffer(4 * 40000); // 40000 frames
+        handleMsg({ type: 'CHUNK', buffer: fakeBuffer, frameCount: 40000 });
+        handleMsg({ type: 'COMPLETED' });
+        
+        await expect(p).rejects.toThrow(IncompleteTakeError);
+    });
+
+    it('should throw if module fails to load', async () => {
+        mockContext.audioWorklet.addModule.mockRejectedValueOnce(new Error('Network error'));
+        await expect(engine.prepare('fake-url')).rejects.toThrow('Network error');
     });
 });

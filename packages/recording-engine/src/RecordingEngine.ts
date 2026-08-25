@@ -4,10 +4,12 @@ import {
   RecordingPermissionError, 
   DeviceUnavailableError, 
   InvalidWindowError,
-  BufferLimitExceededError
+  BufferLimitExceededError,
+  IncompleteTakeError
 } from './errors';
 import { timeToFrame } from './utils/frame-math';
 import { RecordingWorkletNode } from './RecordingWorkletNode';
+import type { MainMessage } from './worklet/messages';
 
 export class RecordingEngine {
   private _state: RecordingState = 'IDLE';
@@ -59,11 +61,7 @@ export class RecordingEngine {
     this.setState('PREPARING');
 
     try {
-      try {
-        await this.context.audioWorklet.addModule(workletUrl);
-      } catch (err) {
-        // Module might already be added, ignore
-      }
+      await this.context.audioWorklet.addModule(workletUrl);
 
       const constraints: MediaStreamConstraints = {
         audio: this.config.deviceId ? { deviceId: { exact: this.config.deviceId } } : true
@@ -113,8 +111,9 @@ export class RecordingEngine {
     const endFrame = timeToFrame(window.endTime, this.context.sampleRate);
 
     const currentAbsoluteFrame = timeToFrame(this.context.currentTime, this.context.sampleRate);
-    if (startFrame < currentAbsoluteFrame) {
-      throw new InvalidWindowError('startFrame is already in the past');
+    const minLookaheadFrames = timeToFrame(0.05, this.context.sampleRate); // 50ms lookahead
+    if (startFrame < currentAbsoluteFrame + minLookaheadFrames) {
+      throw new InvalidWindowError('startFrame must be in the future with sufficient lookahead (>=50ms)');
     }
 
     const maxFrames = timeToFrame(this.config.maxDurationSeconds!, this.context.sampleRate);
@@ -139,15 +138,16 @@ export class RecordingEngine {
   cancel(): void {
     if (this._state === 'ARMED' || this._state === 'RECORDING') {
       this.workletNode?.cancel();
+      const rejectFn = this.rejectTake;
       this.cleanup();
-      if (this.rejectTake) {
-        this.rejectTake(new Error('Recording cancelled'));
+      if (rejectFn) {
+        rejectFn(new Error('Recording cancelled'));
       }
       this.setState('IDLE');
     }
   }
 
-  private handleWorkletMessage(msg: any): void {
+  private handleWorkletMessage(msg: MainMessage): void {
     if (msg.type === 'CHUNK') {
       if (this._state === 'ARMED') {
         this.setState('RECORDING');
@@ -155,31 +155,52 @@ export class RecordingEngine {
       
       const f32 = new Float32Array(msg.buffer);
       this.chunks.push(f32);
-      this.currentFrameCount += f32.length;
+      this.currentFrameCount += msg.frameCount;
       
       const maxFrames = timeToFrame(this.config.maxDurationSeconds!, this.context.sampleRate);
       if (this.currentFrameCount > maxFrames) {
         this.workletNode?.cancel();
         this.setState('ERROR');
+        const rejectFn = this.rejectTake;
         this.cleanup();
-        if (this.rejectTake) this.rejectTake(new BufferLimitExceededError());
+        if (rejectFn) rejectFn(new BufferLimitExceededError());
       }
       
     } else if (msg.type === 'COMPLETED') {
       this.setState('FINALIZING');
-      const take = this.finalizeTake();
-      this.cleanup();
-      this.setState('COMPLETED');
-      if (this.resolveTake) this.resolveTake(take);
-      
+      try {
+        const take = this.finalizeTake();
+        const resolveFn = this.resolveTake;
+        this.cleanup();
+        this.setState('COMPLETED');
+        if (resolveFn) resolveFn(take);
+      } catch (err: any) {
+        this.setState('ERROR');
+        const rejectFn = this.rejectTake;
+        this.cleanup();
+        if (rejectFn) rejectFn(err);
+      }
     } else if (msg.type === 'ERROR') {
       this.setState('ERROR');
+      const rejectFn = this.rejectTake;
       this.cleanup();
-      if (this.rejectTake) this.rejectTake(new Error(msg.message));
+      if (rejectFn) {
+        const error = new Error(msg.message);
+        (error as any).code = msg.code;
+        rejectFn(error);
+      }
     }
   }
 
   private finalizeTake(): RecordedTake {
+    const startFrame = timeToFrame(this.activeWindow!.startTime, this.context.sampleRate);
+    const endFrame = timeToFrame(this.activeWindow!.endTime, this.context.sampleRate);
+    const expectedFrameCount = endFrame - startFrame;
+
+    if (this.currentFrameCount !== expectedFrameCount) {
+      throw new IncompleteTakeError(`Expected ${expectedFrameCount} frames, but got ${this.currentFrameCount}`);
+    }
+
     const totalFrames = this.currentFrameCount;
     const channelData = new Float32Array(totalFrames);
     let offset = 0;

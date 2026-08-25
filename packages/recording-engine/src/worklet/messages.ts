@@ -3,6 +3,6 @@ export type WorkletMessage =
   | { type: 'CANCEL' };
 
 export type MainMessage =
-  | { type: 'CHUNK'; buffer: ArrayBuffer }
+  | { type: 'CHUNK'; buffer: ArrayBuffer; frameCount: number }
   | { type: 'COMPLETED' }
-  | { type: 'ERROR'; message: string };
+  | { type: 'ERROR'; code: string; message: string };

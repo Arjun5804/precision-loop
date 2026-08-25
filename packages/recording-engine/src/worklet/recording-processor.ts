@@ -15,9 +15,9 @@ type WorkletMessage =
   | { type: 'CANCEL' };
 
 type MainMessage =
-  | { type: 'CHUNK'; buffer: ArrayBuffer }
+  | { type: 'CHUNK'; buffer: ArrayBuffer; frameCount: number }
   | { type: 'COMPLETED' }
-  | { type: 'ERROR'; message: string };
+  | { type: 'ERROR'; code: string; message: string };
 
 class RecordingProcessor extends AudioWorkletProcessor {
   private startFrame: number | null = null;
@@ -69,8 +69,9 @@ class RecordingProcessor extends AudioWorkletProcessor {
     if (sliceEnd > sliceStart) {
       // Extract PCM slice and send via transferable ArrayBuffer
       const slice = channelData.slice(sliceStart, sliceEnd);
+      const frameCount = slice.length;
       this.port.postMessage(
-        { type: 'CHUNK', buffer: slice.buffer } as MainMessage,
+        { type: 'CHUNK', buffer: slice.buffer, frameCount } as MainMessage,
         [slice.buffer]
       );
     }

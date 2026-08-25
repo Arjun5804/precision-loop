@@ -34,3 +34,9 @@ export class BufferLimitExceededError extends RecordingEngineError {
     super(message, 'BUFFER_LIMIT_EXCEEDED');
   }
 }
+
+export class IncompleteTakeError extends RecordingEngineError {
+  constructor(message = 'Captured frame count does not match expected window') {
+    super(message, 'INCOMPLETE_TAKE');
+  }
+}

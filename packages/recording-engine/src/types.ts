@@ -1,3 +1,7 @@
+/**
+ * AudioTime represents absolute seconds on the AudioContext timeline.
+ * It is aliased to distinguish from wall-clock time and relative offsets.
+ */
 export type AudioTime = number;
 
 export interface RecordingWindow {
