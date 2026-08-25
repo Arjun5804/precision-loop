@@ -19,9 +19,9 @@ describe('Transport', () => {
 
   beforeEach(() => {
     clock = new MusicalClock(120, { numerator: 4, denominator: 4 }, { subdivisionsPerBeat: 4 });
-    scheduler = new FakeAudioScheduler() as any;
-    recordingEngine = new FakeRecordingEngine() as any;
-    transport = new Transport(clock, scheduler as any, recordingEngine as any);
+    scheduler = new FakeAudioScheduler();
+    recordingEngine = new FakeRecordingEngine();
+    transport = new Transport(clock, scheduler, recordingEngine);
   });
 
   it('starts in IDLE state', () => {
@@ -116,11 +116,36 @@ describe('Transport', () => {
     await expect(startPromise1).rejects.toThrow();
   });
 
+  it('handles partial CLICK scheduling failure', async () => {
+    transport.configure(validConfig);
+    
+    // We set the fake scheduler to throw on the 3rd click event
+    scheduler.failOnScheduleCount = 3;
+    
+    const startPromise = transport.start(100.0, 'worklet-url.js');
+    
+    // Wait for the failure to propagate
+    await expect(startPromise).rejects.toThrow('Dependency failed during session');
+    
+    // Verify cleanup
+    expect(transport.getState()).toBe('ERROR');
+    expect(transport.getPlan()).toBeNull();
+    expect(transport.getTake()).toBeNull();
+    expect(recordingEngine.isCancelled).toBe(true);
+    
+    // Since it failed on the 3rd event, the first 2 should have been scheduled
+    // and they should have been subsequently cancelled during cleanup.
+    const scheduledIds = scheduler.scheduledEvents.map(e => e.id);
+    for (const id of scheduledIds) {
+      expect(scheduler.cancelledIds).toContain(id);
+    }
+  });
+
   describe('Time Signature Regressions', () => {
     it('handles 3/4 time signature', async () => {
       const config34: TransportConfig = { tempo: 120, timeSignature: { numerator: 3, denominator: 4 }, countInBars: 2, recordingBars: 4 };
       const clock34 = new MusicalClock(120, { numerator: 3, denominator: 4 }, { subdivisionsPerBeat: 4 });
-      transport = new Transport(clock34, scheduler as any, recordingEngine as any);
+      transport = new Transport(clock34, scheduler, recordingEngine);
       transport.configure(config34);
       
       const startPromise = transport.start(10.0, 'worklet-url.js');
@@ -138,7 +163,7 @@ describe('Transport', () => {
     it('handles 6/8 time signature', async () => {
       const config68: TransportConfig = { tempo: 120, timeSignature: { numerator: 6, denominator: 8 }, countInBars: 2, recordingBars: 2 };
       const clock68 = new MusicalClock(120, { numerator: 6, denominator: 8 }, { subdivisionsPerBeat: 2 });
-      transport = new Transport(clock68, scheduler as any, recordingEngine as any);
+      transport = new Transport(clock68, scheduler, recordingEngine);
       transport.configure(config68);
       
       const startPromise = transport.start(10.0, 'worklet-url.js');
@@ -155,7 +180,7 @@ describe('Transport', () => {
     it('handles 7/8 time signature', async () => {
       const config78: TransportConfig = { tempo: 120, timeSignature: { numerator: 7, denominator: 8 }, countInBars: 1, recordingBars: 2 };
       const clock78 = new MusicalClock(120, { numerator: 7, denominator: 8 }, { subdivisionsPerBeat: 2 });
-      transport = new Transport(clock78, scheduler as any, recordingEngine as any);
+      transport = new Transport(clock78, scheduler, recordingEngine);
       transport.configure(config78);
       
       const startPromise = transport.start(10.0, 'worklet-url.js');
