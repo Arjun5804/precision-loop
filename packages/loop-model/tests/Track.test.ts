@@ -6,9 +6,11 @@ import { Session } from '../src/Session';
 describe('Track', () => {
   let track: Track;
   let session: Session;
+  let sessionB: Session;
 
   beforeEach(() => {
     session = new Session('session_1', 120, { numerator: 4, denominator: 4 });
+    sessionB = new Session('session_2', 120, { numerator: 4, denominator: 4 });
     track = session.createTrack();
   });
 
@@ -56,5 +58,12 @@ describe('Track', () => {
 
     track.removeLoop();
     expect(track.getLoop()).toBeNull();
+  });
+
+  it('rejects a Loop assigned from a different Session', () => {
+    const takeB = sessionB.createTake({ sampleRate: 48000, channelCount: 1, frameCount: 10, channels: [new Float32Array(10)] });
+    const loopB = sessionB.createLoop({ take: takeB, musicalLength: { bars: 4 } });
+
+    expect(() => track.setLoop(loopB)).toThrow(InvalidParameterError);
   });
 });

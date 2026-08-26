@@ -3,6 +3,7 @@ import { InvalidParameterError } from './errors';
 
 export class Track {
   public readonly id: string;
+  public readonly sessionId: string;
   private volume: number = 1.0;
   private pan: number = 0.0;
   private muted: boolean = false;
@@ -11,9 +12,11 @@ export class Track {
 
   /**
    * Internal constructor. Use Session.createTrack() to instantiate.
+   * Direct instantiation is unsupported and bypasses session ID allocation invariants.
    */
-  public constructor(id: string) {
+  public constructor(id: string, sessionId: string) {
     this.id = id;
+    this.sessionId = sessionId;
   }
 
   public getVolume(): number {
@@ -59,6 +62,9 @@ export class Track {
   }
 
   public setLoop(loop: Loop): void {
+    if (loop.sessionId !== this.sessionId) {
+      throw new InvalidParameterError('Cannot assign a Loop from a different Session to this Track');
+    }
     this.loop = loop;
   }
 

@@ -55,7 +55,7 @@ export class Session {
 
   public createTrack(): Track {
     const trackId = `track_${++this.trackCounter}`;
-    const track = new Track(trackId);
+    const track = new Track(trackId, this.id);
     this.tracks.push(track);
     return track;
   }
@@ -71,6 +71,7 @@ export class Session {
     const takeId = `take_${++this.takeCounter}`;
     return new Take({
       id: takeId,
+      sessionId: this.id,
       ...params,
     });
   }
@@ -82,6 +83,7 @@ export class Session {
     const loopId = `loop_${++this.loopCounter}`;
     return new Loop({
       id: loopId,
+      sessionId: this.id,
       ...params,
     });
   }

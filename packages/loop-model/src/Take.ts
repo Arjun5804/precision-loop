@@ -2,6 +2,7 @@ import { InvalidParameterError } from './errors';
 
 export interface TakeParams {
   id: string;
+  sessionId: string;
   sampleRate: number;
   channelCount: number;
   frameCount: number;
@@ -12,6 +13,7 @@ export interface TakeParams {
 
 export class Take {
   public readonly id: string;
+  public readonly sessionId: string;
   public readonly sampleRate: number;
   public readonly channelCount: number;
   public readonly frameCount: number;
@@ -21,6 +23,7 @@ export class Take {
 
   /**
    * Internal constructor. Use Session.createTake() to instantiate.
+   * Direct instantiation is unsupported and bypasses session ID allocation invariants.
    */
   public constructor(params: TakeParams) {
     if (params.sampleRate <= 0) {
@@ -49,6 +52,7 @@ export class Take {
     }
 
     this.id = params.id;
+    this.sessionId = params.sessionId;
     this.sampleRate = params.sampleRate;
     this.channelCount = params.channelCount;
     this.frameCount = params.frameCount;

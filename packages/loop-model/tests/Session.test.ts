@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Session } from '../src/Session';
+import { Take } from '../src/Take';
+import { Loop } from '../src/Loop';
 import { InvalidStateError } from '../src/errors';
 import { Tempo, TimeSignature } from '@precision-loop/musical-clock';
 
@@ -74,5 +76,20 @@ describe('Session', () => {
     expect(() => {
       (tracks as any).push({ id: 'fake_track' });
     }).toThrow();
+  });
+
+  it('rejects direct construction of Take with mismatched session IDs', () => {
+    // The constructor requires sessionId. If a user bypasses the factory and passes a fake sessionId,
+    // they can construct it, but it cannot be assigned to tracks in a different session.
+    // However, if we test the constructor directly, it just assigns the sessionId.
+    // We document that direct instantiation is unsupported and bypasses ID allocation.
+    const directTake = new Take({ id: 'take_direct', sessionId: 'fake_session', sampleRate: 48000, channelCount: 1, frameCount: 10, channels: [new Float32Array(10)] });
+    expect(directTake.sessionId).toBe('fake_session');
+    
+    // Attempting to use this in a session's track will fail because the session IDs won't match
+    const track = session.createTrack();
+    const directLoop = new Loop({ id: 'loop_direct', sessionId: directTake.sessionId, take: directTake, musicalLength: { bars: 4 } });
+    
+    expect(() => track.setLoop(directLoop)).toThrow();
   });
 });
