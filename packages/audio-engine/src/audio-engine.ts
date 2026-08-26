@@ -70,6 +70,13 @@ export class AudioEngine {
     return this.managedContext.state;
   }
 
+  public get context(): AudioContext {
+    if (this.state === 'uninitialized') {
+      throw new AudioEngineError('AudioEngine must be initialized before accessing context');
+    }
+    return this.managedContext.context;
+  }
+
   public onStateChange(callback: StateChangeCallback): () => void {
     return this.managedContext.onStateChange(callback);
   }

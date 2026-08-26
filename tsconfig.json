@@ -1,7 +1,14 @@
 {
+  "extends": "./tsconfig.base.json",
   "files": [],
   "references": [
     { "path": "./packages/musical-clock" },
-    { "path": "./packages/audio-scheduler" }
+    { "path": "./packages/audio-scheduler" },
+    { "path": "./packages/audio-engine" },
+    { "path": "./packages/recording-engine" },
+    { "path": "./packages/loop-model" },
+    { "path": "./packages/playback-engine" },
+    { "path": "./packages/transport" },
+    { "path": "./packages/application" }
   ]
 }

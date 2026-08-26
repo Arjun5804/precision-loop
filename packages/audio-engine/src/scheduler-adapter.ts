@@ -5,13 +5,11 @@
  * provides the boundary adapter.
  */
 export interface AudioTimeSource {
-  readonly currentTime: number;
+  currentTime(): number;
 }
 
 export function createAudioTimeSource(getContext: () => AudioContext): AudioTimeSource {
   return {
-    get currentTime(): number {
-      return getContext().currentTime;
-    }
+    currentTime: () => getContext().currentTime
   };
 }

@@ -1,0 +1,19 @@
+{
+  "name": "@precision-loop/application",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@precision-loop/musical-clock": "workspace:*",
+    "@precision-loop/audio-scheduler": "workspace:*",
+    "@precision-loop/audio-engine": "workspace:*",
+    "@precision-loop/recording-engine": "workspace:*",
+    "@precision-loop/playback-engine": "workspace:*",
+    "@precision-loop/transport": "workspace:*",
+    "@precision-loop/loop-model": "workspace:*"
+  }
+}

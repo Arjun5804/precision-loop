@@ -172,7 +172,7 @@ export class RecordingEngine {
         const take = this.finalizeTake();
         const resolveFn = this.resolveTake;
         this.cleanup();
-        this.setState('COMPLETED');
+        this.setState('IDLE');
         if (resolveFn) resolveFn(take);
       } catch (err: any) {
         this.setState('ERROR');

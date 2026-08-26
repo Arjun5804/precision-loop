@@ -15,6 +15,14 @@ describe('RecordingEngine', () => {
             destination: {},
             audioWorklet: { addModule: vi.fn().mockResolvedValue(undefined) }
         };
+        vi.stubGlobal('navigator', {
+            mediaDevices: {
+                getUserMedia: vi.fn().mockResolvedValue({
+                    getTracks: vi.fn().mockReturnValue([{ stop: vi.fn() }])
+                })
+            }
+        });
+
         engine = new RecordingEngine(mockContext as unknown as AudioContext);
     });
 
@@ -45,6 +53,26 @@ describe('RecordingEngine', () => {
         handleMsg({ type: 'COMPLETED' });
         
         await expect(p).rejects.toThrow(FinalizationFailureError);
+    });
+
+    it('should allow prepare() again after successful recording completion', async () => {
+        // 1. Prepare and arm
+        await engine.prepare('fake-url');
+        (engine as any).workletNode = { arm: vi.fn(), cancel: vi.fn(), disconnect: vi.fn() };
+        const p = engine.arm({ startTime: 11, endTime: 12 });
+        
+        // 2. Complete the recording
+        const handleMsg = (engine as any).handleWorkletMessage.bind(engine);
+        const fakeBuffer = new ArrayBuffer(4 * 48000); // exactly 1 second of frames at 48kHz
+        handleMsg({ type: 'CHUNK', buffer: fakeBuffer, frameCount: 48000 });
+        handleMsg({ type: 'COMPLETED' });
+        
+        await p;
+        expect(engine.state).toBe('IDLE');
+        
+        // 3. Prepare again (regression test)
+        await expect(engine.prepare('fake-url-2')).resolves.not.toThrow();
+        expect(engine.state).toBe('READY');
     });
 
     it('should throw if module fails to load', async () => {
