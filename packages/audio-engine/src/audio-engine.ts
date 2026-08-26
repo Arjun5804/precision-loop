@@ -128,6 +128,20 @@ export class AudioEngine {
     }
   }
 
+  // Master Graph Boundary
+  public connectToMaster(node: AudioNode): void {
+    if (!this.graph) {
+      throw new AudioEngineError('AudioEngine must be initialized before connecting to master graph');
+    }
+    node.connect(this.graph.masterGain);
+  }
+
+  public disconnectFromMaster(node: AudioNode): void {
+    // Standard way to disconnect a node from its destination.
+    // If it's only connected to masterGain, this cleanly removes it.
+    node.disconnect();
+  }
+
   // Scheduler Boundary
   public createAudioTimeSource(): AudioTimeSource {
     return createAudioTimeSource(() => this.managedContext.context);
