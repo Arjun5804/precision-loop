@@ -70,7 +70,7 @@ describe('AudioEngine', () => {
     await engine.initialize();
     
     const ts = engine.createAudioTimeSource();
-    expect(ts.currentTime).toBe(0);
+    expect(ts.currentTime()).toBe(0);
   });
   
   it('handles output selection capability', async () => {
