@@ -8,12 +8,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@precision-loop/musical-clock": "workspace:*",
-    "@precision-loop/audio-scheduler": "workspace:*",
-    "@precision-loop/audio-engine": "workspace:*",
-    "@precision-loop/recording-engine": "workspace:*",
-    "@precision-loop/playback-engine": "workspace:*",
-    "@precision-loop/transport": "workspace:*",
-    "@precision-loop/loop-model": "workspace:*"
+    "@precision-loop/musical-clock": "*",
+    "@precision-loop/audio-scheduler": "*",
+    "@precision-loop/audio-engine": "*",
+    "@precision-loop/recording-engine": "*",
+    "@precision-loop/playback-engine": "*",
+    "@precision-loop/transport": "*",
+    "@precision-loop/loop-model": "*"
   }
 }
