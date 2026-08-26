@@ -11,9 +11,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@precision-loop/audio-engine": "workspace:*",
-    "@precision-loop/audio-scheduler": "workspace:*",
-    "@precision-loop/loop-model": "workspace:*"
+    "@precision-loop/audio-engine": "*",
+    "@precision-loop/audio-scheduler": "*",
+    "@precision-loop/loop-model": "*"
   },
   "devDependencies": {
     "vitest": "^1.2.2",
