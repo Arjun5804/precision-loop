@@ -47,6 +47,15 @@ export class EventQueue {
     return false;
   }
 
+  removeWhere(predicate: (event: ScheduledEvent) => boolean): void {
+    for (let i = this.nodes.length - 1; i >= 0; i--) {
+      if (predicate(this.nodes[i].event)) {
+        this.eventIds.delete(this.nodes[i].event.id);
+        this.nodes.splice(i, 1);
+      }
+    }
+  }
+
   removeAll(): void {
     this.nodes = [];
     this.eventIds.clear();

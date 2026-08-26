@@ -61,6 +61,17 @@ describe('PlaybackEngine', () => {
     };
   });
 
+  it('rejects invalid plan with mismatched iterationDuration', () => {
+    // dummyTake has 48000 frames at 48000Hz = 1.0s.
+    plan.tracks[0].iterationDuration = 1.5;
+    expect(() => engine.start(plan)).toThrow(InvalidPlaybackPlanError);
+  });
+
+  it('accepts valid plan with small floating-point difference in duration', () => {
+    plan.tracks[0].iterationDuration = 1.0 + 0.0005; // Within 0.001
+    expect(() => engine.start(plan)).not.toThrow();
+  });
+
   it('rejects invalid plan', () => {
     plan.originTime = -1;
     expect(() => engine.start(plan)).toThrow(InvalidPlaybackPlanError);
@@ -97,18 +108,46 @@ describe('PlaybackEngine', () => {
     expect(source.stoppedAt).toBe(-1); // Stop called without 'when'
   });
 
-  it('ignores stale events after cancellation', () => {
+  it('ignores stale events after cancellation and clears AudioScheduler queue', () => {
     engine.start(plan);
     mockTime = 9.0;
-    engine.replenish();
+    engine.replenish(); // schedules N=0 at 10.0
+    
+    // There should be events in AudioScheduler
+    expect(audioScheduler.tick().scheduled.length).toBe(0); // Tick doesn't pop because time is 9.0, but they are in the queue.
     
     engine.cancel();
     
+    // The events should have been removed from the queue
     mockTime = 10.0;
     engine.replenish();
-    audioScheduler.tick(); // Events for pb-1 are still in AudioScheduler, but engine should ignore
+    const tickRes = audioScheduler.tick();
+    
+    // N=0 should not be in the queue anymore (was cancelled)
+    // Actually, calling engine.replenish() after cancel() does nothing because activePlan is null.
+    // So no new events are added, and the old ones were cancelled.
+    expect(tickRes.scheduled.length).toBe(0); 
     
     expect(adapter.createdSources.length).toBe(0); // No nodes created
+  });
+
+  it('removes active source when playback ends', () => {
+    engine.start(plan);
+    mockTime = 10.0;
+    engine.replenish();
+    audioScheduler.tick();
+    
+    const source = adapter.createdSources[0];
+    
+    // Simulate node ending
+    source.onEndedCallback?.();
+    
+    engine.cancel();
+    
+    // Stop shouldn't be called again because it was removed
+    // Stop was already called at creation time with a 'when' parameter: source.stop(startTime + payload.duration).
+    // So stoppedAt should be 11.0, NOT -1.
+    expect(source.stoppedAt).toBe(11.0); 
   });
 
   it('evicts cache explicitly', () => {

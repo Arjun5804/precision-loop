@@ -57,6 +57,10 @@ class WebSourceNodeWrapper extends WebNodeWrapper<AudioBufferSourceNode> impleme
       this.node.stop();
     }
   }
+
+  onEnded(callback: () => void): void {
+    this.node.onended = callback;
+  }
 }
 
 export class WebResourceAdapter implements PlaybackResourceAdapter {

@@ -20,6 +20,7 @@ export interface ISourceNodeWrapper {
   stop(when?: AudioTime): void;
   disconnect(): void;
   connect(destination: IAudioNodeWrapper): void;
+  onEnded(callback: () => void): void;
 }
 
 /**

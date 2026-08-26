@@ -21,8 +21,11 @@ The `@precision-loop/playback-engine` package provides the deterministic audio r
 - `iterationStart(N) === originTime + N * iterationDuration` for any `N`.
 - Horizon scheduler pushes iterations up to the boundary and does not schedule duplicates.
 - Late scheduler ticks do not alter the timestamp of future iterations.
+- If an iteration's absolute start time is already in the past when replenishment occurs, it is NOT enqueued.
 - If `originTime` < 0 or `iterationDuration` <= 0, `start()` throws an error.
-- Cancelled sessions drop any stale playback events dispatched by the `AudioScheduler`.
+- If `iterationDuration` does not match the Take's expected duration (`frameCount / sampleRate`) within a 0.001s tolerance, `start()` throws an error.
+- Cancelled sessions actively remove any pending playback events from the `AudioScheduler`.
+- Active source nodes are removed from internal tracking when they finish playing via an `onended` mechanism.
 - Soloing a track forces the effective gain of all non-soloed tracks to 0.
 
 ## Error Handling

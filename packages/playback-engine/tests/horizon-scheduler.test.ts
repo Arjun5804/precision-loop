@@ -9,9 +9,10 @@ describe('HorizonScheduler', () => {
   let timeSource: AudioTimeSource;
   let horizonScheduler: HorizonScheduler;
   let plan: PlaybackPlan;
+  let mockTime = 0;
 
   beforeEach(() => {
-    let mockTime = 0;
+    mockTime = 0;
     timeSource = { currentTime: () => mockTime };
     const dummySink = { schedule: () => {} };
     audioScheduler = new AudioScheduler(timeSource, dummySink, { lookahead: 0.1 });
@@ -61,8 +62,7 @@ describe('HorizonScheduler', () => {
     expect(result1.scheduled.length).toBe(0);
 
     // Advance time to 100.0
-    timeSource = { currentTime: () => 100.0 };
-    Object.assign(audioScheduler, { timeSource }); // Hacky way to inject time for test
+    mockTime = 100.0;
     const result2 = audioScheduler.tick();
     
     expect(result2.scheduled.length).toBe(1);
@@ -77,8 +77,7 @@ describe('HorizonScheduler', () => {
     // Move to 101.0. Window ends at 103.0. Should schedule N=1 (102.0).
     horizonScheduler.replenish(plan, 101.0);
     
-    timeSource = { currentTime: () => 102.0 };
-    Object.assign(audioScheduler, { timeSource });
+    mockTime = 102.0;
     
     const result = audioScheduler.tick();
     
@@ -91,13 +90,26 @@ describe('HorizonScheduler', () => {
     // N=500 starts at 100.0 + 500 * 2.0 = 1100.0
     horizonScheduler.replenish(plan, 1099.0);
     
-    timeSource = { currentTime: () => 1100.0 };
-    Object.assign(audioScheduler, { timeSource });
+    mockTime = 1100.0;
     
     const result = audioScheduler.tick();
     expect(result.scheduled.length).toBeGreaterThan(0);
     const event = result.scheduled.find(e => (e.payload as any).iterationIndex === 500);
     expect(event).toBeDefined();
     expect(event!.time).toBe(1100.0);
+  });
+
+  it('skips late iterations without scheduling them', () => {
+    // Current time is 101.5. 
+    // Origin is 100. N=0 (100.0) is late. N=1 (102.0) is in the future.
+    // It should schedule N=1, but NOT N=0.
+    horizonScheduler.replenish(plan, 101.5);
+    
+    mockTime = 102.0;
+    const result = audioScheduler.tick();
+    
+    expect(result.scheduled.length).toBe(1);
+    expect((result.scheduled[0].payload as any).iterationIndex).toBe(1);
+    expect(result.scheduled[0].time).toBe(102.0);
   });
 });

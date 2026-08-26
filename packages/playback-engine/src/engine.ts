@@ -93,8 +93,10 @@ export class PlaybackEngine implements AudioEventSink {
 
     this.activeSources.add(source);
     
-    // TODO: In a real implementation, we would listen for node end to remove it from `activeSources`
-    // However, Web Audio handles garbage collection of stopped nodes automatically once they finish playing.
+    source.onEnded(() => {
+      this.activeSources.delete(source);
+      source.disconnect();
+    });
   }
 
   /**
@@ -102,6 +104,12 @@ export class PlaybackEngine implements AudioEventSink {
    */
   public cancel(): void {
     if (!this.activePlan) return;
+
+    // Cancel pending events from the AudioScheduler
+    this.audioScheduler.cancelWhere(e => 
+      e.type === LOOP_ITERATION_EVENT_TYPE && 
+      (e.payload as LoopIterationEventPayload).playbackSessionId === this.activePlan?.playbackSessionId
+    );
 
     // Stop active sources
     this.activeSources.forEach(source => {
@@ -113,9 +121,6 @@ export class PlaybackEngine implements AudioEventSink {
     // Reset components
     this.trackMixer.cleanup();
     this.horizonScheduler.reset();
-    
-    // In a full implementation, we'd also clear pending events from the AudioScheduler
-    // using a `audioScheduler.cancel(id -> matches playbackSessionId)` if the API supports it.
     
     this.activePlan = null;
   }
@@ -136,6 +141,12 @@ export class PlaybackEngine implements AudioEventSink {
       if (track.iterationDuration <= 0 || !Number.isFinite(track.iterationDuration)) {
         throw new InvalidPlaybackPlanError(`Invalid iterationDuration for track ${track.trackId}`);
       }
+      
+      const expectedDuration = track.take.frameCount / track.take.sampleRate;
+      if (Math.abs(track.iterationDuration - expectedDuration) > 0.001) {
+        throw new InvalidPlaybackPlanError(`iterationDuration ${track.iterationDuration} does not match take duration ${expectedDuration} for track ${track.trackId}`);
+      }
+
       if (track.volume < 0.0 || track.volume > 1.0) {
         throw new InvalidPlaybackPlanError(`Invalid volume for track ${track.trackId}`);
       }

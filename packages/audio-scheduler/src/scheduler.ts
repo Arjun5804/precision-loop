@@ -74,6 +74,10 @@ export class AudioScheduler {
     return this.queue.remove(eventId);
   }
 
+  cancelWhere(predicate: (event: ScheduledEvent) => boolean): void {
+    this.queue.removeWhere(predicate);
+  }
+
   cancelAll(): void {
     this.queue.removeAll();
   }

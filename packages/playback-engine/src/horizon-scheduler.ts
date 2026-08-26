@@ -31,11 +31,9 @@ export class HorizonScheduler {
           break;
         }
 
-        // We only schedule iterations that haven't passed in absolute time.
-        // Actually, if iterationStartTime < currentTime, it's late. We still schedule it
-        // and let AudioScheduler or engine handle it immediately.
-        
-        this.scheduleIteration(plan, track, iteration, iterationStartTime);
+        if (iterationStartTime >= currentTime) {
+          this.scheduleIteration(plan, track, iteration, iterationStartTime);
+        }
         
         iteration++;
         this.lastScheduledIterationByTrack.set(track.trackId, iteration);

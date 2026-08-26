@@ -53,6 +53,7 @@ export class FakeSourceNodeWrapper extends FakeNodeWrapper implements ISourceNod
   public startedAt: AudioTime | null = null;
   public stoppedAt: AudioTime | null = null;
   public buffer: FakeAudioBufferWrapper;
+  public onEndedCallback?: () => void;
   
   constructor(buffer: FakeAudioBufferWrapper) {
     super();
@@ -65,6 +66,10 @@ export class FakeSourceNodeWrapper extends FakeNodeWrapper implements ISourceNod
   
   stop(when?: AudioTime): void {
     this.stoppedAt = when ?? -1;
+  }
+
+  onEnded(callback: () => void): void {
+    this.onEndedCallback = callback;
   }
 }
 

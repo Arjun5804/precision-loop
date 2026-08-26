@@ -6,7 +6,7 @@ The `@precision-loop/playback-engine` is responsible for translating audio-domai
 - **AudioBuffer Management:** Caches and reuses Web Audio representations of domain `Take` objects.
 - **Audio Graph Maintenance:** Creates and updates Track subgraphs (Gain, Pan) and connects them to the `AudioEngine` master graph.
 - **Drift-Free Scheduling:** Schedules exact loop repetitions anchored to an absolute `AudioTime` origin.
-- **Playback Lifecycle:** Owns the start, stop, and cancellation logic for its internal playback nodes and scheduled events.
+- **Playback Lifecycle:** Owns the start, stop, and cancellation logic for its internal playback nodes and scheduled events. Cancellation removes pending events from the scheduler, and active source nodes are automatically cleaned up when playback finishes.
 
 ## Non-Responsibilities
 - **Musical Time:** It does not understand BPM, bars, or beats. The orchestrating layer provides it with exact `AudioTime` durations.
