@@ -75,6 +75,41 @@ describe('RecordingEngine', () => {
         expect(engine.state).toBe('READY');
     });
 
+    it('should handle cancellation during PREPARING gracefully', async () => {
+        let resolveGetUserMedia: (stream: any) => void;
+        vi.mocked(navigator.mediaDevices.getUserMedia).mockReturnValueOnce(new Promise(resolve => {
+            resolveGetUserMedia = resolve;
+        }));
+
+        const preparePromise = engine.prepare('fake-url');
+        
+        // Wait until getUserMedia is actually invoked
+        await new Promise(r => setTimeout(r, 0));
+        
+        expect(engine.state).toBe('PREPARING');
+        expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalled();
+
+        // Cancel while waiting for getUserMedia
+        engine.cancel();
+        expect(engine.state).toBe('IDLE');
+
+        // Now resolve getUserMedia
+        const stopMock = vi.fn();
+        resolveGetUserMedia!({ getTracks: () => [{ stop: stopMock }] });
+
+        await preparePromise; // Should resolve safely without changing state
+
+        expect(engine.state).toBe('IDLE'); // Not READY
+        expect(stopMock).toHaveBeenCalled(); // Should clean up acquired media stream
+
+        // Subsequent prepare should work
+        vi.mocked(navigator.mediaDevices.getUserMedia).mockResolvedValueOnce({
+            getTracks: vi.fn().mockReturnValue([{ stop: vi.fn() }])
+        } as any);
+        await expect(engine.prepare('fake-url-2')).resolves.not.toThrow();
+        expect(engine.state).toBe('READY');
+    });
+
     it('should throw if module fails to load', async () => {
         mockContext.audioWorklet.addModule.mockRejectedValueOnce(new Error('Network error'));
         await expect(engine.prepare('fake-url')).rejects.toThrow('Network error');

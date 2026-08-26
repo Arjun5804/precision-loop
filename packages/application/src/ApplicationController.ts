@@ -28,6 +28,8 @@ export class ApplicationController {
     private timeSource: AudioTimeSource;
     private eventRouter: ApplicationEventRouter;
     
+    private playbackSessionCounter: number = 0;
+    
     // Transport is re-instantiated per recording session to ensure it uses the latest Session tempo/timeSignature
     private activeTransport: Transport | null = null;
     
@@ -36,7 +38,7 @@ export class ApplicationController {
         private engineLoop: EngineLoop
     ) {
         // Initialize Session (defaulting to 120 BPM, 4/4)
-        this.session = new Session(crypto.randomUUID(), 120, { numerator: 4, denominator: 4 });
+        this.session = new Session('session_1', 120, { numerator: 4, denominator: 4 });
         
         this.audioEngine = new AudioEngine();
         this.eventRouter = new ApplicationEventRouter();
@@ -162,7 +164,7 @@ export class ApplicationController {
         
         try {
             const clock = new MusicalClock(this.session.getTempo(), this.session.getTimeSignature(), { subdivisionsPerBeat: 4 });
-            const playbackSessionId = crypto.randomUUID();
+            const playbackSessionId = `playback_${++this.playbackSessionCounter}`;
             const originTime = this.timeSource.currentTime() + this.config.sessionLeadTimeSeconds;
             
             const plan = buildPlaybackPlan(this.session, clock, playbackSessionId, originTime);

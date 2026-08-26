@@ -28,6 +28,8 @@ export class RecordingEngine {
   private resolveTake: ((take: RecordedTake) => void) | null = null;
   private rejectTake: ((err: Error) => void) | null = null;
 
+  private prepareGeneration = 0;
+
   constructor(
     private readonly context: AudioContext,
     config: RecordingConfig = {}
@@ -58,17 +60,21 @@ export class RecordingEngine {
       throw new InvalidStateError('Can only prepare from IDLE state', 'NOT_IDLE');
     }
     
+    const generation = ++this.prepareGeneration;
     this.setState('PREPARING');
 
     try {
       await this.context.audioWorklet.addModule(workletUrl);
+      
+      if (this.prepareGeneration !== generation) return;
 
       const constraints: MediaStreamConstraints = {
         audio: this.config.deviceId ? { deviceId: { exact: this.config.deviceId } } : true
       };
 
+      let mediaStream: MediaStream;
       try {
-        this.mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+        mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
       } catch (err: any) {
         if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
           throw new RecordingPermissionError();
@@ -78,6 +84,13 @@ export class RecordingEngine {
         throw err;
       }
 
+      if (this.prepareGeneration !== generation) {
+        // Cancelled during getUserMedia
+        mediaStream.getTracks().forEach(t => t.stop());
+        return;
+      }
+
+      this.mediaStream = mediaStream;
       this.sourceNode = this.context.createMediaStreamSource(this.mediaStream);
       this.workletNode = new RecordingWorkletNode(this.context);
       this.sourceNode.connect(this.workletNode.node);
@@ -92,6 +105,7 @@ export class RecordingEngine {
 
       this.setState('READY');
     } catch (err) {
+      if (this.prepareGeneration !== generation) return; // Ignore errors if cancelled
       this.cleanup();
       this.setState('ERROR');
       throw err;
@@ -136,6 +150,13 @@ export class RecordingEngine {
   }
 
   cancel(): void {
+    if (this._state === 'PREPARING') {
+      this.prepareGeneration++; // Invalidates any pending prepare() resolution
+      this.cleanup();
+      this.setState('IDLE');
+      return;
+    }
+    
     if (this._state === 'ARMED' || this._state === 'RECORDING') {
       this.workletNode?.cancel();
       const rejectFn = this.rejectTake;
