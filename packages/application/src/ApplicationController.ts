@@ -1,7 +1,7 @@
 import { Session } from '@precision-loop/loop-model';
 import { AudioEngine, AudioEngineState } from '@precision-loop/audio-engine';
 import { AudioScheduler, AudioTimeSource } from '@precision-loop/audio-scheduler';
-import { RecordingEngine } from '@precision-loop/recording-engine';
+import { RecordingEngine, RecordingState } from '@precision-loop/recording-engine';
 import { PlaybackEngine, WebResourceAdapter } from '@precision-loop/playback-engine';
 import { Transport } from '@precision-loop/transport';
 import { MusicalClock } from '@precision-loop/musical-clock';
@@ -45,6 +45,14 @@ export class ApplicationController {
         this.audioScheduler = new AudioScheduler(this.timeSource, this.eventRouter);
         const context = this.audioEngine.context;
         this.recordingEngine = new RecordingEngine(context);
+        this.recordingEngine.onStateChange((state: RecordingState) => {
+            // The recording engine is the authoritative source for the exact
+            // point at which PCM capture actually begins. This keeps the UI's
+            // COUNT-IN/RECORDING state tied to audio runtime, not wall-clock UI timers.
+            if (!this.activeRecordingTrackId) return;
+            if (state === 'RECORDING') this.setState('RECORDING');
+        });
+
         const resourceAdapter = new WebResourceAdapter(context, this.audioEngine);
         this.playbackEngine = new PlaybackEngine(resourceAdapter, this.audioScheduler, this.timeSource);
         this.eventRouter.playbackEngine = this.playbackEngine;
@@ -81,7 +89,6 @@ export class ApplicationController {
         if (track.getLoop()) throw new ApplicationStateError(`Track ${trackId} already contains a loop`);
         if (this.activeTransport) throw new ApplicationStateError('A recording is already active');
 
-        const wasPlaying = this.hasActivePlayback();
         this.activeRecordingTrackId = trackId;
         this.setState('PREPARING');
         const currentGen = ++this.generation;
@@ -90,8 +97,8 @@ export class ApplicationController {
             const clock = new MusicalClock(this.session.getTempo(), this.session.getTimeSignature(), { subdivisionsPerBeat: 4 });
             this.activeTransport = new Transport(clock, this.audioScheduler, this.recordingEngine);
             this.activeTransport.configure({ tempo: this.session.getTempo(), timeSignature: this.session.getTimeSignature(), countInBars, recordingBars });
+
             const sessionStartTime = this.timeSource.currentTime() + this.config.sessionLeadTimeSeconds;
-            this.setState('RECORDING');
             await this.activeTransport.start(sessionStartTime, this.config.recordingWorkletUrl);
             if (this.generation !== currentGen) return;
 
@@ -100,14 +107,18 @@ export class ApplicationController {
             const take = adaptRecordedTake(this.session, recordedTake);
             const loop = this.session.createLoop({ take, musicalLength: { bars: recordingBars } });
             track.setLoop(loop);
+
+            // A loop station convention is to enter playback immediately when
+            // a loop is closed. Clear recording ownership first so the normal
+            // independent-track playback path can start cleanly.
             this.activeTransport = null;
             this.activeRecordingTrackId = null;
-            this.setState(wasPlaying && this.hasActivePlayback() ? 'PLAYING' : 'IDLE');
+            this.startTrackPlayback(track.id);
         } catch (err: any) {
             if (this.generation !== currentGen) return;
             this.activeTransport = null;
             this.activeRecordingTrackId = null;
-            this.setState(wasPlaying && this.hasActivePlayback() ? 'PLAYING' : 'ERROR');
+            this.setState(this.hasActivePlayback() ? 'PLAYING' : 'ERROR');
             throw new ApplicationDependencyError('Recording failed', err);
         }
     }
@@ -140,26 +151,34 @@ export class ApplicationController {
         }
     }
 
-    /** Start one existing loop, aligned to the current playback origin. */
+    /** Start one existing loop without disturbing other tracks, even during recording. */
     public startTrackPlayback(trackId: string): void {
         const track = this.session.getTracks().find(t => t.id === trackId);
         if (!track?.getLoop()) throw new ApplicationStateError(`Track ${trackId} has no loop`);
-        if (this._state === 'RECORDING' || this._state === 'PREPARING') throw new ApplicationStateError('Cannot change track playback while preparing a recording');
+        if (this.isTrackPlaying(trackId)) return;
+
+        const clock = new MusicalClock(this.session.getTempo(), this.session.getTimeSignature(), { subdivisionsPerBeat: 4 });
 
         if (!this.hasActivePlayback()) {
-            this.startPlayback();
-            for (const other of this.session.getTracks()) {
-                if (other.id !== trackId && other.getLoop()) this.playbackEngine.stopTrack(other.id);
-            }
-            return;
+            const playbackSessionId = `playback_${++this.playbackSessionCounter}`;
+            const originTime = this.timeSource.currentTime() + this.config.sessionLeadTimeSeconds;
+            this.playbackEngine.start(
+                buildPlaybackPlan(this.session, clock, playbackSessionId, originTime),
+                new Set([trackId])
+            );
+        } else {
+            this.playbackEngine.startTrack(trackId);
         }
-        this.playbackEngine.startTrack(trackId);
-        this.setState('PLAYING');
+
+        // Keep PREPARING/RECORDING authoritative while another recording is active.
+        if (this._state === 'IDLE' || this._state === 'PLAYING') this.setState('PLAYING');
+        else this.setState(this._state);
     }
 
     public stopTrack(trackId: string): void {
         this.playbackEngine?.stopTrack(trackId);
         if (!this.hasActivePlayback() && !this.activeTransport) this.setState('IDLE');
+        else this.setState(this._state);
     }
 
     public stop(): void {

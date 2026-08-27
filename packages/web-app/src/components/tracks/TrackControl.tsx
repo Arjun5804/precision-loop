@@ -11,7 +11,8 @@ interface TrackControlProps {
 export const TrackControl: React.FC<TrackControlProps> = ({ track, index }) => {
     const controller = useApplicationController();
     const appState = useApplicationState();
-    const hasLoop = track.getLoop() !== null;
+    const loop = track.getLoop();
+    const hasLoop = loop !== null;
     const isRecordingTrack = controller.getActiveRecordingTrackId() === track.id;
     const isPlaying = hasLoop && controller.isTrackPlaying(track.id);
 
@@ -63,22 +64,28 @@ export const TrackControl: React.FC<TrackControlProps> = ({ track, index }) => {
     const stateClass = isRecording ? 'is-recording' : isCountIn ? 'is-count-in' : isPlaying ? 'is-playing' : '';
 
     return (
-        <div className={`track-column ${stateClass}`} data-testid={`track-panel-${index + 1}`}>
+        <div
+            className={`track-column ${stateClass}`}
+            data-testid={`track-panel-${index + 1}`}
+            data-track-state={statusText}
+        >
             <div className="track-number-plate">TRACK {index + 1}</div>
 
             <div className="track-status-line">
-                <span className={`status-dot ${ledClass}`} />
+                <span className={`status-dot ${ledClass}`} aria-hidden="true" />
                 <span className="status-text">{statusText}</span>
+                {hasLoop && <span className="loop-length">{loop!.musicalLength.bars} BAR LOOP</span>}
             </div>
 
             <div className="pedal-container">
-                <button 
-                    className="pedal" 
-                    onClick={handleAction} 
+                <button
+                    className="pedal"
+                    onClick={handleAction}
                     aria-label={`Track ${index + 1} ${actionLabel}`}
                     title={`Track ${index + 1} ${actionLabel}`}
+                    disabled={isRecordingTrack === false && !isEmpty && !isPlaying && !isReadyOrStopped}
                 >
-                    <div className="pedal-switch"></div>
+                    <div className="pedal-switch" aria-hidden="true"></div>
                 </button>
                 <div className="pedal-label">{actionLabel}</div>
             </div>

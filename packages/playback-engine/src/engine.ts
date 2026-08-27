@@ -26,11 +26,21 @@ export class PlaybackEngine implements AudioEventSink {
     this.horizonScheduler = new HorizonScheduler(this.audioScheduler, schedulingHorizonSeconds);
   }
 
-  public start(plan: PlaybackPlan): void {
+  /**
+   * Start a playback session. By default every loop in the plan is active.
+   * A subset may be supplied for independent track playback; the complete
+   * plan is still retained so additional tracks can be started later without
+   * creating a second playback clock/origin.
+   */
+  public start(plan: PlaybackPlan, initialActiveTrackIds?: ReadonlySet<string>): void {
     this.validatePlan(plan);
     this.cancel();
     this.activePlan = plan;
-    this.activeTrackIds = new Set(plan.tracks.map(t => t.trackId));
+
+    const availableTrackIds = new Set(plan.tracks.map(t => t.trackId));
+    this.activeTrackIds = initialActiveTrackIds
+      ? new Set([...initialActiveTrackIds].filter(id => availableTrackIds.has(id)))
+      : availableTrackIds;
 
     for (const track of plan.tracks) {
       this.bufferCache.getOrCreate(track.take);
