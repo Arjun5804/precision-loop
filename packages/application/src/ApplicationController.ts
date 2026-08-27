@@ -1,5 +1,5 @@
 import { Session } from '@precision-loop/loop-model';
-import { AudioEngine } from '@precision-loop/audio-engine';
+import { AudioEngine, AudioEngineState } from '@precision-loop/audio-engine';
 import { AudioScheduler, AudioTimeSource } from '@precision-loop/audio-scheduler';
 import { RecordingEngine } from '@precision-loop/recording-engine';
 import { PlaybackEngine, WebResourceAdapter } from '@precision-loop/playback-engine';
@@ -93,6 +93,18 @@ export class ApplicationController {
         for (const listener of this.stateListeners) {
             listener(state);
         }
+    }
+    
+    public getAudioState(): AudioEngineState {
+        return this.audioEngine.state;
+    }
+    
+    public onAudioStateChange(listener: (state: AudioEngineState) => void): () => void {
+        return this.audioEngine.onStateChange(listener);
+    }
+    
+    public async resumeAudio(): Promise<void> {
+        await this.audioEngine.resume();
     }
     
     public async startRecording(trackId: string, countInBars: number, recordingBars: number): Promise<void> {

@@ -190,6 +190,12 @@ Important constraints:
 All foundational domains and infrastructure adapters have been implemented. 
 The Application layer now acts as the composition/orchestration boundary that wires the domain and infrastructure subsystems together safely.
 
+Current target:
+
+## Browser UI Shell & Application Integration v0.1
+
+The UI implements a React/Vite web application that acts as a thin presentation layer over `ApplicationController`. It provides hardware-inspired visual controls for initialization, recording, playback, and track states without violating domain purity.
+
 ### Transport
 
 `@precision-loop/transport` is the musical-time orchestration layer.
