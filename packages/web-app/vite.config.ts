@@ -1,5 +1,7 @@
+/// <reference types="vitest" />
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
+import { configDefaults } from 'vitest/config'
 
 // https://vite.dev/config/
 import path from 'path';
@@ -22,5 +24,8 @@ export default defineConfig({
       '@precision-loop/transport',
       '@precision-loop/musical-clock'
     ]
+  },
+  test: {
+    exclude: [...configDefaults.exclude, '**/e2e/**']
   }
 })
