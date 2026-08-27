@@ -12,7 +12,8 @@ export class PlaybackEngine implements AudioEventSink {
   private readonly bufferCache: BufferCache;
   private readonly trackMixer: TrackMixer;
   private readonly horizonScheduler: HorizonScheduler;
-  private activeSources = new Set<ISourceNodeWrapper>();
+  private activeSources = new Map<string, Set<ISourceNodeWrapper>>();
+  private activeTrackIds = new Set<string>();
 
   constructor(
     private readonly adapter: PlaybackResourceAdapter,
@@ -25,109 +26,120 @@ export class PlaybackEngine implements AudioEventSink {
     this.horizonScheduler = new HorizonScheduler(this.audioScheduler, schedulingHorizonSeconds);
   }
 
-  /**
-   * Starts a playback session based on the provided plan.
-   * Valdiates the plan and initializes the graphs and scheduler.
-   */
   public start(plan: PlaybackPlan): void {
     this.validatePlan(plan);
-    
-    // Stop any existing playback before starting a new one
     this.cancel();
-
     this.activePlan = plan;
+    this.activeTrackIds = new Set(plan.tracks.map(t => t.trackId));
 
-    // Prefetch/cache buffers for all takes in the plan
     for (const track of plan.tracks) {
       this.bufferCache.getOrCreate(track.take);
     }
-
-    // Configure track gains and panners
     this.trackMixer.configureTracks(plan.tracks);
-
-    // Run an initial replenish to populate the AudioScheduler queue
-    const currentTime = this.timeSource.currentTime();
-    this.horizonScheduler.replenish(this.activePlan, currentTime);
+    this.horizonScheduler.replenish(plan, this.timeSource.currentTime(), this.activeTrackIds);
   }
 
-  /**
-   * Should be called periodically to maintain the scheduling horizon.
-   * Can be driven by the same loop that ticks the AudioScheduler.
-   */
-  public replenish(): void {
+  public startTrack(trackId: string): void {
+    if (!this.activePlan) throw new Error('No playback session is active');
+    if (!this.activePlan.tracks.some(t => t.trackId === trackId)) return;
+    if (this.activeTrackIds.has(trackId)) return;
+
+    this.activeTrackIds.add(trackId);
+    this.horizonScheduler.activateTrack(this.activePlan, trackId, this.timeSource.currentTime());
+    this.horizonScheduler.replenish(this.activePlan, this.timeSource.currentTime(), this.activeTrackIds);
+  }
+
+  public stopTrack(trackId: string): void {
     if (!this.activePlan) return;
-    const currentTime = this.timeSource.currentTime();
-    this.horizonScheduler.replenish(this.activePlan, currentTime);
+
+    this.activeTrackIds.delete(trackId);
+    const sessionId = this.activePlan.playbackSessionId;
+    this.audioScheduler.cancelWhere(e =>
+      e.type === LOOP_ITERATION_EVENT_TYPE &&
+      (e.payload as LoopIterationEventPayload).playbackSessionId === sessionId &&
+      (e.payload as LoopIterationEventPayload).trackId === trackId
+    );
+
+    const sources = this.activeSources.get(trackId);
+    if (sources) {
+      sources.forEach(source => {
+        source.stop();
+        source.disconnect();
+      });
+      this.activeSources.delete(trackId);
+    }
+    this.horizonScheduler.deactivateTrack(trackId);
   }
 
-  /**
-   * AudioEventSink implementation. The AudioScheduler dispatches popped events here.
-   */
+  public isTrackPlaying(trackId: string): boolean {
+    return this.activeTrackIds.has(trackId);
+  }
+
+  public hasActivePlayback(): boolean {
+    return this.activePlan !== null && this.activeTrackIds.size > 0;
+  }
+
+  public replenish(): void {
+    if (!this.activePlan || this.activeTrackIds.size === 0) return;
+    this.horizonScheduler.replenish(this.activePlan, this.timeSource.currentTime(), this.activeTrackIds);
+  }
+
   public schedule(event: ScheduledEvent): void {
     if (event.type !== LOOP_ITERATION_EVENT_TYPE) return;
-    
     const payload = event.payload as LoopIterationEventPayload;
-    
-    // Discard stale events if the session was cancelled or changed
-    if (!this.activePlan || payload.playbackSessionId !== this.activePlan.playbackSessionId) {
-      return;
-    }
-
+    if (!this.activePlan || payload.playbackSessionId !== this.activePlan.playbackSessionId) return;
+    if (!this.activeTrackIds.has(payload.trackId)) return;
     this.executeLoopIteration(event.time, payload);
   }
 
   private executeLoopIteration(startTime: number, payload: LoopIterationEventPayload): void {
-    // We assume the active plan matches the payload due to validation above
-    const trackDest = this.trackMixer.getTrackDestination(payload.trackId);
-    
-    // Retrieve buffer (already cached during start)
-    const activeTrack = this.activePlan!.tracks.find(t => t.trackId === payload.trackId)!;
-    const buffer = this.bufferCache.getOrCreate(activeTrack.take);
+    const activeTrack = this.activePlan!.tracks.find(t => t.trackId === payload.trackId);
+    if (!activeTrack || !this.activeTrackIds.has(payload.trackId)) return;
 
-    // Create and schedule the source node
+    const trackDest = this.trackMixer.getTrackDestination(payload.trackId);
+    const buffer = this.bufferCache.getOrCreate(activeTrack.take);
     const source = this.adapter.createSourceNode(buffer);
     source.connect(trackDest);
-    
     source.start(startTime);
     source.stop(startTime + payload.duration);
 
-    this.activeSources.add(source);
-    
+    let sources = this.activeSources.get(payload.trackId);
+    if (!sources) {
+      sources = new Set<ISourceNodeWrapper>();
+      this.activeSources.set(payload.trackId, sources);
+    }
+    sources.add(source);
+
     source.onEnded(() => {
-      this.activeSources.delete(source);
+      sources!.delete(source);
       source.disconnect();
+      if (sources!.size === 0) this.activeSources.delete(payload.trackId);
     });
   }
 
-  /**
-   * Cancels the current playback session and stops all active sounds immediately.
-   */
   public cancel(): void {
     if (!this.activePlan) return;
 
-    // Cancel pending events from the AudioScheduler
-    this.audioScheduler.cancelWhere(e => 
-      e.type === LOOP_ITERATION_EVENT_TYPE && 
-      (e.payload as LoopIterationEventPayload).playbackSessionId === this.activePlan?.playbackSessionId
+    const sessionId = this.activePlan.playbackSessionId;
+    this.audioScheduler.cancelWhere(e =>
+      e.type === LOOP_ITERATION_EVENT_TYPE &&
+      (e.payload as LoopIterationEventPayload).playbackSessionId === sessionId
     );
 
-    // Stop active sources
-    this.activeSources.forEach(source => {
-      source.stop(); // Stops immediately
-      source.disconnect();
+    this.activeSources.forEach(sources => {
+      sources.forEach(source => {
+        source.stop();
+        source.disconnect();
+      });
     });
     this.activeSources.clear();
-
-    // Reset components
+    this.activeTrackIds.clear();
     this.trackMixer.cleanup();
     this.horizonScheduler.reset();
-    
     this.activePlan = null;
   }
 
-  public stop(): void {
-    this.cancel();
-  }
+  public stop(): void { this.cancel(); }
 
   public evictCache(sessionId: string, takeId: string): void {
     this.bufferCache.evict(sessionId, takeId);
@@ -141,18 +153,12 @@ export class PlaybackEngine implements AudioEventSink {
       if (track.iterationDuration <= 0 || !Number.isFinite(track.iterationDuration)) {
         throw new InvalidPlaybackPlanError(`Invalid iterationDuration for track ${track.trackId}`);
       }
-      
       const expectedDuration = track.take.frameCount / track.take.sampleRate;
       if (Math.abs(track.iterationDuration - expectedDuration) > 0.001) {
         throw new InvalidPlaybackPlanError(`iterationDuration ${track.iterationDuration} does not match take duration ${expectedDuration} for track ${track.trackId}`);
       }
-
-      if (track.volume < 0.0 || track.volume > 1.0) {
-        throw new InvalidPlaybackPlanError(`Invalid volume for track ${track.trackId}`);
-      }
-      if (track.pan < -1.0 || track.pan > 1.0) {
-        throw new InvalidPlaybackPlanError(`Invalid pan for track ${track.trackId}`);
-      }
+      if (track.volume < 0.0 || track.volume > 1.0) throw new InvalidPlaybackPlanError(`Invalid volume for track ${track.trackId}`);
+      if (track.pan < -1.0 || track.pan > 1.0) throw new InvalidPlaybackPlanError(`Invalid pan for track ${track.trackId}`);
     }
   }
 }
