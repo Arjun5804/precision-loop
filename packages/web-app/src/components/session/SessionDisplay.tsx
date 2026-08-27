@@ -10,17 +10,27 @@ export const SessionDisplay: React.FC = () => {
 
     return (
         <div className="app-container">
-            <header className="header-panel">
-                <div>
-                    <h1 style={{ letterSpacing: '2px', textTransform: 'uppercase' }}>Precision Loop</h1>
-                    <div style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: 'var(--spacing-xs)' }}>
-                        {tempo} BPM | {ts.numerator}/{ts.denominator}
+            {/* Global LCD Panel */}
+            <div className="lcd-panel-container">
+                <div className="lcd-panel">
+                    <h1 className="lcd-title">PRECISION LOOP</h1>
+                    <div className="lcd-stats">
+                        <span>BPM: {tempo}</span>
+                        <span>SIG: {ts.numerator}/{ts.denominator}</span>
+                        <span>STS: {controller.getState()}</span>
                     </div>
                 </div>
-                <TransportControls />
-            </header>
+            </div>
             
-            <TrackList />
+            {/* Tracks Bay */}
+            <div className="tracks-bay">
+                <TrackList />
+            </div>
+
+            {/* Global Transport */}
+            <div className="global-transport">
+                <TransportControls />
+            </div>
         </div>
     );
 };

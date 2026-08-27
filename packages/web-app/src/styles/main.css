@@ -1,244 +1,346 @@
 :root {
-  --bg-primary: #1a1b1e;
-  --bg-secondary: #25262b;
-  --bg-panel: #2c2e33;
-  --bg-control: #343a40;
-  --bg-control-hover: #3b4148;
-  
-  --text-primary: #f8f9fa;
-  --text-secondary: #adb5bd;
-  --text-muted: #868e96;
-  
-  --accent-ready: #fcc419; /* Yellow */
-  --accent-record: #fa5252; /* Red */
-  --accent-play: #51cf66; /* Green */
-  --accent-stopped: #4dabf7; /* Blue */
-  
-  --border-color: #3b3f46;
-  --border-radius-sm: 4px;
-  --border-radius-md: 8px;
-  --border-radius-lg: 12px;
-  --border-radius-full: 9999px;
-  
+  /* Hardware Chassis Colors */
+  --chassis-dark: #121212;
+  --chassis-metal: #1e1e1e;
+  --chassis-panel: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+  --chassis-border: #0a0a0a;
+
+  /* LCD Screen Colors */
+  --lcd-bg: #102a24;
+  --lcd-text: #4ade80; /* Bright green/cyan */
+  --lcd-glow: 0 0 8px rgba(74, 222, 128, 0.4);
+
+  /* LEDs */
+  --led-off: #333;
+  --led-rec: #ff3333;
+  --led-play: #33ff33;
+  --led-ready: #ffaa00;
+
+  /* Text & Labels */
+  --text-main: #e0e0e0;
+  --text-label: #888;
+  --text-dark: #222;
+
+  /* Footswitch / Pedals */
+  --pedal-bg: #2a2a2a;
+  --pedal-border-top: #444;
+  --pedal-border-bottom: #000;
+
   --spacing-xs: 4px;
   --spacing-sm: 8px;
   --spacing-md: 16px;
   --spacing-lg: 24px;
   --spacing-xl: 32px;
-  
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  font-family: "Inter", "Roboto", "Segoe UI", sans-serif;
 }
 
 body {
   margin: 0;
   padding: 0;
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
+  background-color: var(--chassis-dark);
+  color: var(--text-main);
   min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 #root {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  width: 100%;
+  height: 100vh;
 }
 
-/* Typography */
-h1, h2, h3, h4, h5, h6 {
-  margin: 0;
-  font-weight: 600;
-}
-
-/* Layouts */
+/* -------------------------------------
+   LAYOUT
+-------------------------------------- */
 .app-container {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  padding: var(--spacing-md);
+  width: 100vw;
+  background: var(--chassis-metal);
   box-sizing: border-box;
-  max-width: 1200px;
-  margin: 0 auto;
-  width: 100%;
-}
-
-.header-panel {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background-color: var(--bg-secondary);
   padding: var(--spacing-lg);
-  border-radius: var(--border-radius-lg);
-  margin-bottom: var(--spacing-md);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-  border: 1px solid var(--border-color);
+  border: 4px solid var(--chassis-border);
+  box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+  overflow: hidden; /* Prevent unwanted scrollbars */
 }
 
-.transport-section {
+/* -------------------------------------
+   GLOBAL LCD PANEL
+-------------------------------------- */
+.lcd-panel-container {
   display: flex;
-  gap: var(--spacing-md);
-  align-items: center;
-}
-
-/* Hardware-inspired Buttons */
-.btn-hardware {
-  background-color: var(--bg-control);
-  border: 2px solid var(--border-color);
-  color: var(--text-primary);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
   justify-content: center;
-  transition: all 0.1s ease;
-  user-select: none;
-  box-shadow: 0 4px 0 rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.05);
+  margin-bottom: var(--spacing-lg);
 }
 
-.btn-hardware:active:not(:disabled) {
-  transform: translateY(4px);
-  box-shadow: 0 0 0 rgba(0,0,0,0.5), inset 0 4px 6px rgba(0,0,0,0.3);
+.lcd-panel {
+  background-color: var(--lcd-bg);
+  border: 3px solid #000;
+  border-radius: 4px;
+  padding: var(--spacing-md) var(--spacing-xl);
+  box-shadow: inset 0 0 15px rgba(0,0,0,0.9), 0 2px 4px rgba(255,255,255,0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 300px;
 }
 
-.btn-hardware:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-circular {
-  border-radius: var(--border-radius-full);
-  width: 72px;
-  height: 72px;
+.lcd-title {
+  font-family: monospace;
+  font-size: 20px;
   font-weight: bold;
-  font-size: 14px;
+  color: var(--lcd-text);
+  text-shadow: var(--lcd-glow);
+  letter-spacing: 2px;
+  margin: 0 0 var(--spacing-sm) 0;
 }
 
-.btn-indicator {
+.lcd-stats {
+  font-family: monospace;
+  font-size: 14px;
+  color: var(--lcd-text);
+  text-shadow: var(--lcd-glow);
+  display: flex;
+  gap: var(--spacing-lg);
+}
+
+/* -------------------------------------
+   TRACKS BAY
+-------------------------------------- */
+.tracks-bay {
+  display: flex;
+  flex: 1;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: #111;
+  border-radius: 8px;
+  box-shadow: inset 0 5px 15px rgba(0,0,0,0.8);
+  overflow-x: auto;
+  overflow-y: hidden;
+  align-items: stretch;
+}
+
+/* -------------------------------------
+   INDIVIDUAL TRACK
+-------------------------------------- */
+.track-column {
+  flex: 1;
+  min-width: 140px;
+  max-width: 200px;
+  background: var(--chassis-panel);
+  border: 1px solid var(--chassis-border);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--spacing-md) var(--spacing-sm);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.1);
   position: relative;
 }
 
-.btn-indicator::after {
-  content: '';
-  position: absolute;
-  top: -8px;
-  left: -8px;
-  right: -8px;
-  bottom: -8px;
-  border-radius: var(--border-radius-full);
-  border: 3px solid transparent;
-  transition: border-color 0.2s ease;
-}
-
-.btn-indicator.state-recording::after {
-  border-color: var(--accent-record);
-  box-shadow: 0 0 10px var(--accent-record), inset 0 0 10px var(--accent-record);
-}
-
-.btn-indicator.state-playing::after {
-  border-color: var(--accent-play);
-  box-shadow: 0 0 10px var(--accent-play), inset 0 0 10px var(--accent-play);
-}
-
-.btn-indicator.state-preparing::after {
-  border-color: var(--accent-ready);
-  box-shadow: 0 0 10px var(--accent-ready), inset 0 0 10px var(--accent-ready);
-}
-
-/* Rectangular Utility Buttons */
-.btn-rect {
-  border-radius: var(--border-radius-md);
-  padding: var(--spacing-sm) var(--spacing-lg);
-  font-size: 14px;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-/* Track Area */
-.tracks-container {
-  display: flex;
-  gap: var(--spacing-md);
-  flex-grow: 1;
-  overflow-x: auto;
-  padding-bottom: var(--spacing-sm);
-}
-
-.track-panel {
-  flex: 1;
-  min-width: 180px;
-  background-color: var(--bg-secondary);
-  border-radius: var(--border-radius-lg);
-  padding: var(--spacing-md);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  border: 1px solid var(--border-color);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-}
-
-.track-header {
-  width: 100%;
-  text-align: center;
-  margin-bottom: var(--spacing-lg);
-  padding-bottom: var(--spacing-sm);
-  border-bottom: 1px solid var(--border-color);
-}
-
-.track-controls {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--spacing-lg);
-  flex-grow: 1;
-}
-
-.fader-container {
-  height: 120px;
-  display: flex;
-  align-items: center;
-}
-
-input[type=range][orient=vertical] {
-  appearance: slider-vertical;
-  width: 8px;
-  height: 120px;
-  padding: 0 5px;
-}
-
-.track-status {
-  margin-top: auto;
+.track-number-plate {
+  background: #111;
+  color: #fff;
   font-size: 12px;
-  color: var(--text-muted);
-  text-transform: uppercase;
   font-weight: bold;
+  padding: 4px 12px;
+  border-radius: 12px;
+  border: 1px solid #333;
+  margin-bottom: var(--spacing-lg);
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
-/* Initialization Overlay */
+/* -------------------------------------
+   LEDS
+-------------------------------------- */
+.led-array {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+.led {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--led-off);
+  border: 1px solid #000;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.1);
+}
+
+.led.rec {
+  background: var(--led-rec);
+  box-shadow: 0 0 10px var(--led-rec), inset 0 1px 2px rgba(255,255,255,0.5);
+  border: 1px solid #ffaaaa;
+}
+
+.led.play {
+  background: var(--led-play);
+  box-shadow: 0 0 10px var(--led-play), inset 0 1px 2px rgba(255,255,255,0.5);
+  border: 1px solid #aaffaa;
+}
+
+.led.ready {
+  background: var(--led-ready);
+  box-shadow: 0 0 10px var(--led-ready), inset 0 1px 2px rgba(255,255,255,0.5);
+  border: 1px solid #ffffaa;
+}
+
+/* -------------------------------------
+   MIXER FADER
+-------------------------------------- */
+.fader-slot {
+  flex: 1;
+  width: 30px;
+  background: #0a0a0a;
+  border-radius: 15px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: inset 0 5px 10px rgba(0,0,0,1);
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-xs) 0;
+}
+
+.fader-slot input[type=range] {
+  appearance: slider-vertical;
+  width: 100%;
+  height: 90%;
+  background: transparent;
+}
+
+/* -------------------------------------
+   FOOTSWITCH PEDALS
+-------------------------------------- */
+.pedal-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.pedal {
+  width: 80px;
+  height: 80px;
+  background: var(--pedal-bg);
+  border: none;
+  border-top: 2px solid var(--pedal-border-top);
+  border-bottom: 4px solid var(--pedal-border-bottom);
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: bold;
+  font-size: 14px;
+  color: var(--text-main);
+  text-transform: uppercase;
+  box-shadow: 0 5px 10px rgba(0,0,0,0.8), inset 0 0 10px rgba(0,0,0,0.5);
+  transition: transform 0.05s, border-bottom 0.05s, box-shadow 0.05s;
+}
+
+.pedal:active:not(:disabled) {
+  transform: translateY(4px);
+  border-bottom: 0px solid var(--pedal-border-bottom);
+  border-top: 4px solid #111;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.8), inset 0 5px 10px rgba(0,0,0,0.9);
+}
+
+.pedal:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.pedal-label {
+  font-size: 11px;
+  color: var(--text-label);
+  font-weight: 600;
+  text-align: center;
+  text-transform: uppercase;
+  margin-top: var(--spacing-xs);
+}
+
+/* -------------------------------------
+   GLOBAL TRANSPORT
+-------------------------------------- */
+.global-transport {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--spacing-xl);
+  padding: var(--spacing-lg) 0 0 0;
+}
+
+.global-transport .pedal {
+  width: 120px;
+  height: 60px;
+}
+
+/* -------------------------------------
+   INITIALIZATION OVERLAY
+-------------------------------------- */
 .init-overlay {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  background-color: rgba(0,0,0,0.8);
+  background-color: rgba(10, 10, 10, 0.95);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(8px);
 }
 
 .init-dialog {
-  background-color: var(--bg-secondary);
+  background: var(--chassis-panel);
   padding: var(--spacing-xl);
-  border-radius: var(--border-radius-lg);
+  border-radius: 12px;
+  border: 1px solid #444;
   text-align: center;
-  border: 1px solid var(--border-color);
-  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+  box-shadow: 0 15px 35px rgba(0,0,0,0.8), inset 0 2px 2px rgba(255,255,255,0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-lg);
 }
 
 .init-dialog h2 {
-  margin-bottom: var(--spacing-lg);
+  color: #fff;
+  font-family: monospace;
+  letter-spacing: 2px;
+  margin: 0;
 }
 
-.init-dialog .btn-rect {
-  font-size: 18px;
-  padding: var(--spacing-md) var(--spacing-xl);
-  background-color: var(--accent-play);
-  color: var(--bg-primary);
-  border: none;
+.power-btn {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: #111;
+  border: 2px solid #333;
+  color: var(--led-play);
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.8), inset 0 2px 5px rgba(255,255,255,0.1);
+  transition: all 0.1s ease;
 }
+
+.power-btn:hover {
+  color: #fff;
+  text-shadow: 0 0 10px var(--led-play);
+  border-color: #555;
+}
+
+.power-btn:active {
+  transform: scale(0.95);
+  box-shadow: inset 0 5px 10px rgba(0,0,0,0.8);
+}
+

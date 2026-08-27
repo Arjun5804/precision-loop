@@ -23,26 +23,30 @@ export const TransportControls: React.FC = () => {
     };
 
     return (
-        <div className="transport-section">
+        <>
             <button 
-                className="btn-rect" 
+                className="pedal" 
                 onClick={handleAllStart}
                 disabled={appState !== 'IDLE'}
-                style={{ backgroundColor: appState === 'PLAYING' ? 'var(--accent-play)' : 'var(--bg-control)' }}
+                style={{ 
+                    borderTopColor: appState === 'PLAYING' ? 'var(--led-play)' : 'var(--pedal-border-top)',
+                    boxShadow: appState === 'PLAYING' ? '0 1px 2px rgba(0,0,0,0.8), inset 0 5px 10px rgba(0,0,0,0.9)' : undefined,
+                    transform: appState === 'PLAYING' ? 'translateY(4px)' : undefined,
+                    borderBottomWidth: appState === 'PLAYING' ? '0px' : undefined
+                }}
             >
-                All Start
+                ALL START
             </button>
             <button 
-                className="btn-rect" 
+                className="pedal" 
                 onClick={handleAllStop}
                 disabled={appState === 'IDLE'}
-                style={{ backgroundColor: appState !== 'IDLE' ? 'var(--accent-stopped)' : 'var(--bg-control)' }}
+                style={{ 
+                    borderTopColor: appState !== 'IDLE' ? 'var(--led-rec)' : 'var(--pedal-border-top)'
+                }}
             >
-                Stop
+                STOP
             </button>
-            <div style={{ marginLeft: 'var(--spacing-lg)', fontFamily: 'monospace', fontSize: '18px', color: 'var(--accent-ready)' }}>
-                {appState}
-            </div>
-        </div>
+        </>
     );
 };

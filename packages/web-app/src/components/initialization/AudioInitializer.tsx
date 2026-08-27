@@ -21,10 +21,12 @@ export const AudioInitializer: React.FC = () => {
     return (
         <div className="init-overlay">
             <div className="init-dialog">
-                <h2>Audio Engine Suspended</h2>
-                <p>Click below to initialize the audio engine and enable transport controls.</p>
-                <button className="btn-rect" onClick={handleInitialize}>
-                    Initialize Audio
+                <h2>PRECISION LOOP</h2>
+                <div style={{ fontSize: '12px', color: '#888', marginBottom: 'var(--spacing-md)' }}>
+                    SYSTEM STANDBY
+                </div>
+                <button className="power-btn" onClick={handleInitialize} title="Power On">
+                    ⏻
                 </button>
             </div>
         </div>

@@ -32,6 +32,7 @@ export class ApplicationController {
     
     // Transport is re-instantiated per recording session to ensure it uses the latest Session tempo/timeSignature
     private activeTransport: Transport | null = null;
+    private activeRecordingTrackId: string | null = null;
     
     constructor(
         private config: ApplicationConfig,
@@ -103,6 +104,10 @@ export class ApplicationController {
         return this.audioEngine.onStateChange(listener);
     }
     
+    public getActiveRecordingTrackId(): string | null {
+        return this.activeRecordingTrackId;
+    }
+    
     public async resumeAudio(): Promise<void> {
         await this.audioEngine.resume();
     }
@@ -118,6 +123,7 @@ export class ApplicationController {
         }
         
         this.setState('PREPARING');
+        this.activeRecordingTrackId = trackId;
         const currentGen = ++this.generation;
         
         try {
@@ -144,6 +150,7 @@ export class ApplicationController {
             // 4. Adapt and mutate domain
             const recordedTake = this.activeTransport.getTake();
             if (!recordedTake) {
+                this.activeRecordingTrackId = null;
                 throw new Error("Transport completed but returned no take");
             }
             
@@ -156,12 +163,14 @@ export class ApplicationController {
             track.setLoop(loop);
             
             this.activeTransport = null;
+            this.activeRecordingTrackId = null;
             this.setState('IDLE');
             
         } catch (err: any) {
             if (this.generation !== currentGen) return; // Stale, ignore
             
             this.activeTransport = null;
+            this.activeRecordingTrackId = null;
             this.setState('ERROR');
             throw new ApplicationDependencyError('Recording failed', err);
         }
@@ -198,6 +207,8 @@ export class ApplicationController {
             this.activeTransport.stop();
             this.activeTransport = null;
         }
+        
+        this.activeRecordingTrackId = null;
         
         if (this.playbackEngine) {
             this.playbackEngine.cancel();
