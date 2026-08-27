@@ -33,7 +33,6 @@ describe('ApplicationController', () => {
             sessionLeadTimeSeconds: 0.1
         };
         
-        // Mock AudioEngine context and time source
         vi.mocked(AudioEngine.prototype.createAudioTimeSource).mockReturnValue({
             currentTime: () => 10.0
         });
@@ -62,7 +61,6 @@ describe('ApplicationController', () => {
         
         const track = controller.session.createTrack();
         
-        // Mock Transport start and getTake
         vi.mocked(Transport.prototype.start).mockResolvedValue(undefined);
         vi.mocked(Transport.prototype.getTake).mockReturnValue({
             id: 't1',
@@ -80,7 +78,6 @@ describe('ApplicationController', () => {
         expect(Transport.prototype.start).toHaveBeenCalledWith(10.1, 'record.js');
         expect(controller.getState()).toBe('IDLE');
         
-        // Verify domain mutation
         expect(track.getLoop()).not.toBeNull();
         expect(track.getLoop()!.take.frameCount).toBe(48000);
     });
@@ -89,7 +86,6 @@ describe('ApplicationController', () => {
         await controller.initialize();
         const track = controller.session.createTrack();
         
-        // Make Transport.start block
         let resolveStart: () => void;
         vi.mocked(Transport.prototype.start).mockReturnValue(new Promise(resolve => {
             resolveStart = resolve;
@@ -97,14 +93,11 @@ describe('ApplicationController', () => {
         
         const recordPromise = controller.startRecording(track.id, 1, 1);
         
-        // Controller is RECORDING
         expect(controller.getState()).toBe('RECORDING');
         
-        // Stop called mid-recording
         controller.stop();
         expect(controller.getState()).toBe('IDLE');
         
-        // Transport completes (stale)
         vi.mocked(Transport.prototype.getTake).mockReturnValue({
             id: 't1', sampleRate: 48000, channelCount: 1, frameCount: 48000,
             channels: [new Float32Array(48000)], startTime: 10.1, endTime: 11.1
@@ -113,14 +106,12 @@ describe('ApplicationController', () => {
         
         await recordPromise;
         
-        // Domain should not be mutated because it was cancelled
         expect(track.getLoop()).toBeNull();
     });
 
     it('should execute playback flow', async () => {
         await controller.initialize();
         
-        // Create a loop to play
         const track = controller.session.createTrack();
         const take = controller.session.createTake({
             sampleRate: 48000, channelCount: 1, frameCount: 48000, channels: [new Float32Array(48000)]
@@ -135,6 +126,21 @@ describe('ApplicationController', () => {
 
     it('should stop and transition to IDLE', async () => {
         await controller.initialize();
+
+        // startPlayback requires at least one loop; create a minimal valid loop
+        // so this test exercises stop() rather than the no-loops validation.
+        const track = controller.session.createTrack();
+        const take = controller.session.createTake({
+            sampleRate: 48000,
+            channelCount: 1,
+            frameCount: 48000,
+            channels: [new Float32Array(48000)]
+        });
+        track.setLoop(controller.session.createLoop({
+            take,
+            musicalLength: { bars: 1 }
+        }));
+
         controller.startPlayback();
         expect(controller.getState()).toBe('PLAYING');
         
