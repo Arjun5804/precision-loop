@@ -52,7 +52,7 @@ export const TrackControl: React.FC<TrackControlProps> = ({ track, index }) => {
                     min="0"
                     max="100"
                     value={Math.round(track.getVolume() * 100)}
-                    onChange={e => track.setVolume(Number(e.target.value) / 100)}
+                    disabled
                     aria-label={`Track ${index + 1} volume`}
                 />
             </div>
