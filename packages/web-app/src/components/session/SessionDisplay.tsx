@@ -2,9 +2,11 @@ import React from 'react';
 import { TransportControls } from '../transport/TransportControls';
 import { TrackList } from '../tracks/TrackList';
 import { useApplicationController } from '../../application/ApplicationProvider';
+import { useApplicationState } from '../../hooks/useApplicationState';
 
 export const SessionDisplay: React.FC = () => {
     const controller = useApplicationController();
+    const appState = useApplicationState();
     const tempo = controller.session.getTempo();
     const ts = controller.session.getTimeSignature();
 
@@ -17,7 +19,7 @@ export const SessionDisplay: React.FC = () => {
                     <div className="lcd-stats">
                         <span>BPM: {tempo}</span>
                         <span>SIG: {ts.numerator}/{ts.denominator}</span>
-                        <span>STS: {controller.getState()}</span>
+                        <span data-testid="app-state-label">STS: {appState}</span>
                     </div>
                 </div>
             </div>

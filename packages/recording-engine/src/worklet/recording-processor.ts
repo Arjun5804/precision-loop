@@ -45,12 +45,7 @@ class RecordingProcessor extends AudioWorkletProcessor {
       return true; // Keep processing silently
     }
 
-    const input = inputs[0];
-    if (!input || !input[0]) {
-      return true;
-    }
-
-    const channelData = input[0];
+    const channelData = (inputs[0] && inputs[0][0]) ? inputs[0][0] : new Float32Array(128);
     const blockStartFrame = currentFrame; // Absolute context frame timeline
     const blockEndFrame = blockStartFrame + channelData.length;
 

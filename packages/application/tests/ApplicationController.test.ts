@@ -42,6 +42,11 @@ describe('ApplicationController', () => {
             configurable: true
         });
 
+        Object.defineProperty(PlaybackEngine.prototype, 'hasActivePlayback', {
+            value: vi.fn().mockReturnValue(false),
+            configurable: true
+        });
+
         controller = new ApplicationController(config, mockEngineLoop);
     });
 

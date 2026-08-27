@@ -12,21 +12,25 @@ export const TrackControl: React.FC<TrackControlProps> = ({ track, index }) => {
     const controller = useApplicationController();
     const appState = useApplicationState();
     const hasLoop = track.getLoop() !== null;
-    const isRecording = controller.getActiveRecordingTrackId() === track.id;
+    const isRecordingTrack = controller.getActiveRecordingTrackId() === track.id;
     const isPlaying = hasLoop && controller.isTrackPlaying(track.id);
-    const anotherTrackRecording = controller.getActiveRecordingTrackId() !== null && !isRecording;
+
+    const isCountIn = isRecordingTrack && appState === 'PREPARING';
+    const isRecording = isRecordingTrack && appState === 'RECORDING';
+    const isReadyOrStopped = hasLoop && !isPlaying && !isRecordingTrack;
+    const isEmpty = !hasLoop && !isRecordingTrack;
 
     const handleAction = () => {
         try {
-            if (isRecording) {
-                controller.stopRecording();
-            } else if (!hasLoop) {
+            if (isEmpty) {
                 if (appState === 'IDLE' || appState === 'PLAYING') {
                     void controller.startRecording(track.id, 1, 4).catch(err => console.error('Recording failed', err));
                 }
+            } else if (isCountIn || isRecording) {
+                controller.stopRecording();
             } else if (isPlaying) {
                 controller.stopTrack(track.id);
-            } else if (!anotherTrackRecording) {
+            } else if (isReadyOrStopped) {
                 controller.startTrackPlayback(track.id);
             }
         } catch (err) {
@@ -34,34 +38,49 @@ export const TrackControl: React.FC<TrackControlProps> = ({ track, index }) => {
         }
     };
 
-    const ledState = isRecording ? 'rec' : isPlaying ? 'play' : '';
-    const label = isRecording ? 'STOP REC' : isPlaying ? 'STOP' : hasLoop ? 'PLAY' : 'REC';
+    let statusText = 'EMPTY';
+    let ledClass = '';
+    let actionLabel = 'REC';
+
+    if (isCountIn) {
+        statusText = 'COUNT-IN';
+        ledClass = 'count-in';
+        actionLabel = 'STOP';
+    } else if (isRecording) {
+        statusText = 'RECORDING';
+        ledClass = 'rec';
+        actionLabel = 'STOP';
+    } else if (isPlaying) {
+        statusText = 'PLAYING';
+        ledClass = 'play';
+        actionLabel = 'STOP';
+    } else if (isReadyOrStopped) {
+        statusText = 'READY';
+        ledClass = 'ready';
+        actionLabel = 'PLAY';
+    }
+
+    const stateClass = isRecording ? 'is-recording' : isCountIn ? 'is-count-in' : isPlaying ? 'is-playing' : '';
 
     return (
-        <div className={`track-column ${isRecording ? 'is-recording' : ''} ${isPlaying ? 'is-playing' : ''}`}>
+        <div className={`track-column ${stateClass}`} data-testid={`track-panel-${index + 1}`}>
             <div className="track-number-plate">TRACK {index + 1}</div>
 
             <div className="track-status-line">
-                <span className={`status-dot ${ledState}`} />
-                <span>{isRecording ? 'RECORDING' : isPlaying ? 'PLAYING' : hasLoop ? 'READY' : 'EMPTY'}</span>
-            </div>
-
-            <div className="fader-slot">
-                <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={Math.round(track.getVolume() * 100)}
-                    disabled
-                    aria-label={`Track ${index + 1} volume`}
-                />
+                <span className={`status-dot ${ledClass}`} />
+                <span className="status-text">{statusText}</span>
             </div>
 
             <div className="pedal-container">
-                <button className="pedal" onClick={handleAction} disabled={anotherTrackRecording && !isRecording}>
-                    {hasLoop ? '▶/■' : '●'}
+                <button 
+                    className="pedal" 
+                    onClick={handleAction} 
+                    aria-label={`Track ${index + 1} ${actionLabel}`}
+                    title={`Track ${index + 1} ${actionLabel}`}
+                >
+                    <div className="pedal-switch"></div>
                 </button>
-                <div className="pedal-label">{label}</div>
+                <div className="pedal-label">{actionLabel}</div>
             </div>
         </div>
     );

@@ -5,9 +5,10 @@ import { useApplicationState } from '../../hooks/useApplicationState';
 export const TransportControls: React.FC = () => {
     const controller = useApplicationController();
     const appState = useApplicationState();
+    const hasAnyLoop = controller.session.getTracks().some(t => t.getLoop() !== null);
 
     const handleAllStart = () => {
-        if (appState === 'IDLE') {
+        if (appState === 'IDLE' && hasAnyLoop) {
             try {
                 controller.startPlayback();
             } catch (err) {
@@ -24,29 +25,31 @@ export const TransportControls: React.FC = () => {
 
     return (
         <>
-            <button 
-                className="pedal" 
-                onClick={handleAllStart}
-                disabled={appState !== 'IDLE'}
-                style={{ 
-                    borderTopColor: appState === 'PLAYING' ? 'var(--led-play)' : 'var(--pedal-border-top)',
-                    boxShadow: appState === 'PLAYING' ? '0 1px 2px rgba(0,0,0,0.8), inset 0 5px 10px rgba(0,0,0,0.9)' : undefined,
-                    transform: appState === 'PLAYING' ? 'translateY(4px)' : undefined,
-                    borderBottomWidth: appState === 'PLAYING' ? '0px' : undefined
-                }}
-            >
-                ALL START
-            </button>
-            <button 
-                className="pedal" 
-                onClick={handleAllStop}
-                disabled={appState === 'IDLE'}
-                style={{ 
-                    borderTopColor: appState !== 'IDLE' ? 'var(--led-rec)' : 'var(--pedal-border-top)'
-                }}
-            >
-                STOP
-            </button>
+            <div className="pedal-container global-pedal">
+                <button 
+                    className="pedal" 
+                    onClick={handleAllStart}
+                    disabled={appState !== 'IDLE' || !hasAnyLoop}
+                    aria-label="All Start"
+                    title="All Start"
+                >
+                    <div className="pedal-switch"></div>
+                </button>
+                <div className="pedal-label">ALL START</div>
+            </div>
+            
+            <div className="pedal-container global-pedal">
+                <button 
+                    className="pedal" 
+                    onClick={handleAllStop}
+                    disabled={appState === 'IDLE'}
+                    aria-label="All Stop"
+                    title="All Stop"
+                >
+                    <div className="pedal-switch"></div>
+                </button>
+                <div className="pedal-label">STOP</div>
+            </div>
         </>
     );
 };
