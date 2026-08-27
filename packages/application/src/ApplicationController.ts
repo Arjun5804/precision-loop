@@ -46,9 +46,6 @@ export class ApplicationController {
         const context = this.audioEngine.context;
         this.recordingEngine = new RecordingEngine(context);
         this.recordingEngine.onStateChange((state: RecordingState) => {
-            // The recording engine is the authoritative source for the exact
-            // point at which PCM capture actually begins. This keeps the UI's
-            // COUNT-IN/RECORDING state tied to audio runtime, not wall-clock UI timers.
             if (!this.activeRecordingTrackId) return;
             if (state === 'RECORDING') this.setState('RECORDING');
         });
@@ -108,11 +105,11 @@ export class ApplicationController {
             const loop = this.session.createLoop({ take, musicalLength: { bars: recordingBars } });
             track.setLoop(loop);
 
-            // A loop station convention is to enter playback immediately when
-            // a loop is closed. Clear recording ownership first so the normal
-            // independent-track playback path can start cleanly.
+            // Recording has finished. Release recording ownership before starting
+            // playback so the new loop follows the normal playback state machine.
             this.activeTransport = null;
             this.activeRecordingTrackId = null;
+            this.setState(this.hasActivePlayback() ? 'PLAYING' : 'IDLE');
             this.startTrackPlayback(track.id);
         } catch (err: any) {
             if (this.generation !== currentGen) return;
@@ -170,15 +167,12 @@ export class ApplicationController {
             this.playbackEngine.startTrack(trackId);
         }
 
-        // Keep PREPARING/RECORDING authoritative while another recording is active.
         if (this._state === 'IDLE' || this._state === 'PLAYING') this.setState('PLAYING');
-        else this.setState(this._state);
     }
 
     public stopTrack(trackId: string): void {
         this.playbackEngine?.stopTrack(trackId);
         if (!this.hasActivePlayback() && !this.activeTransport) this.setState('IDLE');
-        else this.setState(this._state);
     }
 
     public stop(): void {
