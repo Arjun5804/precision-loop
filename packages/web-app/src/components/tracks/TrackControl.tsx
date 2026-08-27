@@ -12,57 +12,56 @@ export const TrackControl: React.FC<TrackControlProps> = ({ track, index }) => {
     const controller = useApplicationController();
     const appState = useApplicationState();
     const hasLoop = track.getLoop() !== null;
-    const isThisTrackRecording = controller.getActiveRecordingTrackId() === track.id;
-
-    const isRecLedOn = isThisTrackRecording && appState === 'RECORDING';
-    const isReadyLedOn = isThisTrackRecording && appState === 'PREPARING';
-    const isPlayLedOn = appState === 'PLAYING' && hasLoop;
+    const isRecording = controller.getActiveRecordingTrackId() === track.id;
+    const isPlaying = hasLoop && controller.isTrackPlaying(track.id);
+    const anotherTrackRecording = controller.getActiveRecordingTrackId() !== null && !isRecording;
 
     const handleAction = () => {
-        if (appState === 'IDLE' && !hasLoop) {
-            // Start recording on this track with v0.1 defaults (1 bar count-in, 4 bars record)
-            controller.startRecording(track.id, 1, 4).catch(err => {
-                console.error('Failed to start recording', err);
-            });
-        } else if (appState === 'IDLE' && hasLoop) {
-            // Start playback globally (v0.1 simplified)
-            controller.startPlayback();
-        } else if (isThisTrackRecording || isPlayLedOn) {
-            // Stop if we are actively playing or recording this track
-            controller.stop();
+        try {
+            if (isRecording) {
+                controller.stopRecording();
+            } else if (!hasLoop) {
+                if (appState === 'IDLE' || appState === 'PLAYING') {
+                    void controller.startRecording(track.id, 1, 4).catch(err => console.error('Recording failed', err));
+                }
+            } else if (isPlaying) {
+                controller.stopTrack(track.id);
+            } else if (!anotherTrackRecording) {
+                controller.startTrackPlayback(track.id);
+            }
+        } catch (err) {
+            console.error('Track action failed', err);
         }
     };
 
+    const ledState = isRecording ? 'rec' : isPlaying ? 'play' : '';
+    const label = isRecording ? 'STOP REC' : isPlaying ? 'STOP' : hasLoop ? 'PLAY' : 'REC';
+
     return (
-        <div className="track-column">
-            <div className="track-number-plate">
-                TRACK {index + 1}
-            </div>
-            
-            <div className="led-array">
-                <div className={`led ${isRecLedOn ? 'rec' : ''}`} title="Recording" />
-                <div className={`led ${isPlayLedOn ? 'play' : ''}`} title="Playing" />
-                <div className={`led ${isReadyLedOn ? 'ready' : ''}`} title="Armed/Preparing" />
+        <div className={`track-column ${isRecording ? 'is-recording' : ''} ${isPlaying ? 'is-playing' : ''}`}>
+            <div className="track-number-plate">TRACK {index + 1}</div>
+
+            <div className="track-status-line">
+                <span className={`status-dot ${ledState}`} />
+                <span>{isRecording ? 'RECORDING' : isPlaying ? 'PLAYING' : hasLoop ? 'READY' : 'EMPTY'}</span>
             </div>
 
             <div className="fader-slot">
-                <input 
-                    type="range" 
-                    style={{ writingMode: 'vertical-lr', WebkitAppearance: 'slider-vertical' }} 
-                    min="0" max="100" defaultValue="80" disabled 
+                <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={Math.round(track.getVolume() * 100)}
+                    onChange={e => track.setVolume(Number(e.target.value) / 100)}
+                    aria-label={`Track ${index + 1} volume`}
                 />
             </div>
 
             <div className="pedal-container">
-                <button 
-                    className="pedal"
-                    onClick={handleAction}
-                >
+                <button className="pedal" onClick={handleAction} disabled={anotherTrackRecording && !isRecording}>
                     {hasLoop ? '▶/■' : '●'}
                 </button>
-                <div className="pedal-label">
-                    {hasLoop ? 'PLAY/STOP' : 'REC/DUB'}
-                </div>
+                <div className="pedal-label">{label}</div>
             </div>
         </div>
     );
