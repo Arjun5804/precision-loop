@@ -15,11 +15,9 @@ import { ApplicationStateError, ApplicationDependencyError } from './errors';
 
 export class ApplicationController {
     public readonly session: Session;
-
     private _state: AppState = 'IDLE';
     private stateListeners: Set<(state: AppState) => void> = new Set();
     private generation = 0;
-
     private audioEngine: AudioEngine;
     private audioScheduler: AudioScheduler;
     private recordingEngine: RecordingEngine;
@@ -58,17 +56,14 @@ export class ApplicationController {
     }
 
     public getState(): AppState { return this._state; }
-
     public onStateChange(listener: (state: AppState) => void): () => void {
         this.stateListeners.add(listener);
         return () => this.stateListeners.delete(listener);
     }
-
     private setState(state: AppState): void {
         this._state = state;
         for (const listener of this.stateListeners) listener(state);
     }
-
     public getAudioState(): AudioEngineState { return this.audioEngine.state; }
     public onAudioStateChange(listener: (state: AudioEngineState) => void): () => void { return this.audioEngine.onStateChange(listener); }
     public getActiveRecordingTrackId(): string | null { return this.activeRecordingTrackId; }
@@ -81,38 +76,30 @@ export class ApplicationController {
         if (this._state !== 'IDLE' && this._state !== 'PLAYING') {
             throw new ApplicationStateError(`Cannot start recording from state: ${this._state}`);
         }
-
         const track = this.session.getTracks().find(t => t.id === trackId);
         if (!track) throw new ApplicationStateError(`Track ${trackId} not found`);
         if (track.getLoop()) throw new ApplicationStateError(`Track ${trackId} already contains a loop`);
+        if (this.activeTransport) throw new ApplicationStateError('A recording is already active');
 
         const wasPlaying = this.hasActivePlayback();
-        this.setState('PREPARING');
         this.activeRecordingTrackId = trackId;
+        this.setState('PREPARING');
         const currentGen = ++this.generation;
 
         try {
             const clock = new MusicalClock(this.session.getTempo(), this.session.getTimeSignature(), { subdivisionsPerBeat: 4 });
             this.activeTransport = new Transport(clock, this.audioScheduler, this.recordingEngine);
-            this.activeTransport.configure({
-                tempo: this.session.getTempo(),
-                timeSignature: this.session.getTimeSignature(),
-                countInBars,
-                recordingBars
-            });
-
+            this.activeTransport.configure({ tempo: this.session.getTempo(), timeSignature: this.session.getTimeSignature(), countInBars, recordingBars });
             const sessionStartTime = this.timeSource.currentTime() + this.config.sessionLeadTimeSeconds;
             this.setState('RECORDING');
             await this.activeTransport.start(sessionStartTime, this.config.recordingWorkletUrl);
-
             if (this.generation !== currentGen) return;
+
             const recordedTake = this.activeTransport.getTake();
             if (!recordedTake) throw new Error('Transport completed but returned no take');
-
             const take = adaptRecordedTake(this.session, recordedTake);
             const loop = this.session.createLoop({ take, musicalLength: { bars: recordingBars } });
             track.setLoop(loop);
-
             this.activeTransport = null;
             this.activeRecordingTrackId = null;
             this.setState(wasPlaying && this.hasActivePlayback() ? 'PLAYING' : 'IDLE');
@@ -134,19 +121,17 @@ export class ApplicationController {
         this.setState(this.hasActivePlayback() ? 'PLAYING' : 'IDLE');
     }
 
-    /** Start all existing loops on a common musical origin. */
+    /** Start all existing loops on one shared musical origin. */
     public startPlayback(): void {
         if (this._state !== 'IDLE') throw new ApplicationStateError(`Cannot start playback from state: ${this._state}`);
         const loops = this.session.getTracks().filter(t => t.getLoop() !== null);
         if (loops.length === 0) throw new ApplicationStateError('No loops available for playback');
-
         const currentGen = ++this.generation;
         try {
             const clock = new MusicalClock(this.session.getTempo(), this.session.getTimeSignature(), { subdivisionsPerBeat: 4 });
             const playbackSessionId = `playback_${++this.playbackSessionCounter}`;
             const originTime = this.timeSource.currentTime() + this.config.sessionLeadTimeSeconds;
-            const plan = buildPlaybackPlan(this.session, clock, playbackSessionId, originTime);
-            this.playbackEngine.start(plan);
+            this.playbackEngine.start(buildPlaybackPlan(this.session, clock, playbackSessionId, originTime));
             this.setState('PLAYING');
         } catch (err: any) {
             if (this.generation !== currentGen) return;
@@ -155,10 +140,11 @@ export class ApplicationController {
         }
     }
 
-    /** Start only one existing loop. Other tracks remain stopped. */
+    /** Start one existing loop, aligned to the current playback origin. */
     public startTrackPlayback(trackId: string): void {
         const track = this.session.getTracks().find(t => t.id === trackId);
         if (!track?.getLoop()) throw new ApplicationStateError(`Track ${trackId} has no loop`);
+        if (this._state === 'RECORDING' || this._state === 'PREPARING') throw new ApplicationStateError('Cannot change track playback while preparing a recording');
 
         if (!this.hasActivePlayback()) {
             this.startPlayback();
