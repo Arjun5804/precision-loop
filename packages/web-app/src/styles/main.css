@@ -1,346 +1,134 @@
 :root {
-  /* Hardware Chassis Colors */
   --chassis-dark: #121212;
   --chassis-metal: #1e1e1e;
-  --chassis-panel: linear-gradient(145deg, #2a2a2a, #1a1a1a);
-  --chassis-border: #0a0a0a;
-
-  /* LCD Screen Colors */
+  --chassis-panel: linear-gradient(145deg, #2a2a2a, #181818);
+  --chassis-border: #080808;
   --lcd-bg: #102a24;
-  --lcd-text: #4ade80; /* Bright green/cyan */
+  --lcd-text: #4ade80;
   --lcd-glow: 0 0 8px rgba(74, 222, 128, 0.4);
-
-  /* LEDs */
   --led-off: #333;
   --led-rec: #ff3333;
   --led-play: #33ff33;
   --led-ready: #ffaa00;
-
-  /* Text & Labels */
   --text-main: #e0e0e0;
   --text-label: #888;
-  --text-dark: #222;
-
-  /* Footswitch / Pedals */
-  --pedal-bg: #2a2a2a;
-  --pedal-border-top: #444;
+  --pedal-bg: #292929;
+  --pedal-border-top: #4a4a4a;
   --pedal-border-bottom: #000;
-
   --spacing-xs: 4px;
   --spacing-sm: 8px;
   --spacing-md: 16px;
   --spacing-lg: 24px;
   --spacing-xl: 32px;
-
   font-family: "Inter", "Roboto", "Segoe UI", sans-serif;
 }
 
-body {
-  margin: 0;
-  padding: 0;
-  background-color: var(--chassis-dark);
-  color: var(--text-main);
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 0; background: var(--chassis-dark); color: var(--text-main); min-height: 100vh; }
+#root { width: 100%; min-height: 100vh; }
 
-#root {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  height: 100vh;
-}
-
-/* -------------------------------------
-   LAYOUT
--------------------------------------- */
 .app-container {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
+  min-height: 100vh;
   width: 100vw;
   background: var(--chassis-metal);
-  box-sizing: border-box;
-  padding: var(--spacing-lg);
+  padding: 22px;
   border: 4px solid var(--chassis-border);
-  box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
-  overflow: hidden; /* Prevent unwanted scrollbars */
-}
-
-/* -------------------------------------
-   GLOBAL LCD PANEL
--------------------------------------- */
-.lcd-panel-container {
-  display: flex;
-  justify-content: center;
-  margin-bottom: var(--spacing-lg);
-}
-
-.lcd-panel {
-  background-color: var(--lcd-bg);
-  border: 3px solid #000;
-  border-radius: 4px;
-  padding: var(--spacing-md) var(--spacing-xl);
-  box-shadow: inset 0 0 15px rgba(0,0,0,0.9), 0 2px 4px rgba(255,255,255,0.05);
+  box-shadow: inset 0 0 30px rgba(0,0,0,.85);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  min-width: 300px;
+  gap: 18px;
 }
 
-.lcd-title {
-  font-family: monospace;
-  font-size: 20px;
-  font-weight: bold;
-  color: var(--lcd-text);
-  text-shadow: var(--lcd-glow);
-  letter-spacing: 2px;
-  margin: 0 0 var(--spacing-sm) 0;
+.lcd-panel-container { display: flex; justify-content: center; }
+.lcd-panel {
+  min-width: 530px;
+  padding: 18px 30px;
+  background: var(--lcd-bg);
+  border: 3px solid #050505;
+  border-radius: 5px;
+  box-shadow: inset 0 0 18px #000, 0 2px 5px rgba(255,255,255,.05);
+  text-align: center;
 }
+.lcd-title { margin: 0 0 8px; font: 700 22px monospace; letter-spacing: 3px; color: var(--lcd-text); text-shadow: var(--lcd-glow); }
+.lcd-stats { display: flex; justify-content: center; gap: 28px; font: 14px monospace; color: var(--lcd-text); text-shadow: var(--lcd-glow); }
 
-.lcd-stats {
-  font-family: monospace;
-  font-size: 14px;
-  color: var(--lcd-text);
-  text-shadow: var(--lcd-glow);
-  display: flex;
-  gap: var(--spacing-lg);
-}
-
-/* -------------------------------------
-   TRACKS BAY
--------------------------------------- */
 .tracks-bay {
-  display: flex;
   flex: 1;
-  gap: var(--spacing-md);
-  padding: var(--spacing-md);
-  background: #111;
-  border-radius: 8px;
-  box-shadow: inset 0 5px 15px rgba(0,0,0,0.8);
-  overflow-x: auto;
-  overflow-y: hidden;
+  min-height: 0;
+  padding: 16px;
+  background: #0e0e0e;
+  border-radius: 9px;
+  box-shadow: inset 0 6px 18px rgba(0,0,0,.9), 0 1px 0 rgba(255,255,255,.03);
+  overflow: hidden;
+}
+.tracks-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: row;
+  gap: 14px;
   align-items: stretch;
 }
-
-/* -------------------------------------
-   INDIVIDUAL TRACK
--------------------------------------- */
 .track-column {
-  flex: 1;
-  min-width: 140px;
-  max-width: 200px;
+  flex: 1 1 0;
+  min-width: 145px;
   background: var(--chassis-panel);
-  border: 1px solid var(--chassis-border);
-  border-radius: 6px;
+  border: 1px solid #0a0a0a;
+  border-radius: 7px;
+  padding: 15px 10px 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: var(--spacing-md) var(--spacing-sm);
-  box-shadow: 0 4px 10px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.1);
-  position: relative;
+  box-shadow: 0 5px 12px rgba(0,0,0,.6), inset 0 1px 1px rgba(255,255,255,.08);
 }
+.track-column.is-recording { box-shadow: 0 0 0 1px rgba(255,51,51,.35), 0 5px 12px rgba(0,0,0,.6), inset 0 1px 1px rgba(255,255,255,.08); }
+.track-number-plate { background:#101010; color:#fff; font:700 12px monospace; padding:5px 13px; border-radius:12px; border:1px solid #363636; letter-spacing:1px; }
+.track-status-line { margin: 10px 0 12px; min-height: 18px; display:flex; align-items:center; gap:7px; color:#888; font:700 10px monospace; letter-spacing:1px; }
+.status-dot { width:9px; height:9px; border-radius:50%; background:var(--led-off); border:1px solid #000; }
+.status-dot.rec { background:var(--led-rec); box-shadow:0 0 10px var(--led-rec); }
+.status-dot.play { background:var(--led-play); box-shadow:0 0 10px var(--led-play); }
 
-.track-number-plate {
-  background: #111;
-  color: #fff;
-  font-size: 12px;
-  font-weight: bold;
-  padding: 4px 12px;
-  border-radius: 12px;
-  border: 1px solid #333;
-  margin-bottom: var(--spacing-lg);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-/* -------------------------------------
-   LEDS
--------------------------------------- */
-.led-array {
-  display: flex;
-  gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-lg);
-}
-
-.led {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--led-off);
-  border: 1px solid #000;
-  box-shadow: inset 0 1px 2px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.1);
-}
-
-.led.rec {
-  background: var(--led-rec);
-  box-shadow: 0 0 10px var(--led-rec), inset 0 1px 2px rgba(255,255,255,0.5);
-  border: 1px solid #ffaaaa;
-}
-
-.led.play {
-  background: var(--led-play);
-  box-shadow: 0 0 10px var(--led-play), inset 0 1px 2px rgba(255,255,255,0.5);
-  border: 1px solid #aaffaa;
-}
-
-.led.ready {
-  background: var(--led-ready);
-  box-shadow: 0 0 10px var(--led-ready), inset 0 1px 2px rgba(255,255,255,0.5);
-  border: 1px solid #ffffaa;
-}
-
-/* -------------------------------------
-   MIXER FADER
--------------------------------------- */
 .fader-slot {
   flex: 1;
-  width: 30px;
-  background: #0a0a0a;
-  border-radius: 15px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  box-shadow: inset 0 5px 10px rgba(0,0,0,1);
-  margin-bottom: var(--spacing-lg);
-  padding: var(--spacing-xs) 0;
+  width: 34px;
+  min-height: 150px;
+  background: #090909;
+  border-radius: 17px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  box-shadow: inset 0 5px 10px #000;
+  padding: 7px 0;
+  margin-bottom: 15px;
 }
+.fader-slot input[type=range] { appearance: slider-vertical; writing-mode: vertical-lr; width:100%; height:100%; background:transparent; cursor:pointer; }
 
-.fader-slot input[type=range] {
-  appearance: slider-vertical;
-  width: 100%;
-  height: 90%;
-  background: transparent;
-}
-
-/* -------------------------------------
-   FOOTSWITCH PEDALS
--------------------------------------- */
-.pedal-container {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--spacing-sm);
-}
-
+.pedal-container { width:100%; display:flex; flex-direction:column; align-items:center; gap:8px; }
 .pedal {
-  width: 80px;
-  height: 80px;
-  background: var(--pedal-bg);
-  border: none;
-  border-top: 2px solid var(--pedal-border-top);
-  border-bottom: 4px solid var(--pedal-border-bottom);
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-weight: bold;
-  font-size: 14px;
-  color: var(--text-main);
-  text-transform: uppercase;
-  box-shadow: 0 5px 10px rgba(0,0,0,0.8), inset 0 0 10px rgba(0,0,0,0.5);
-  transition: transform 0.05s, border-bottom 0.05s, box-shadow 0.05s;
+  width:88px; height:68px; background:var(--pedal-bg); border:0; border-top:2px solid var(--pedal-border-top); border-bottom:4px solid var(--pedal-border-bottom); border-radius:8px;
+  cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--text-main); font-weight:800; font-size:18px;
+  box-shadow:0 5px 10px rgba(0,0,0,.8), inset 0 0 10px rgba(0,0,0,.5); transition:.05s;
 }
+.track-column.is-playing .pedal { border-top-color:var(--led-play); box-shadow:0 0 12px rgba(51,255,51,.12), 0 2px 4px #000, inset 0 4px 8px #111; transform:translateY(3px); border-bottom-width:1px; }
+.track-column.is-recording .pedal { border-top-color:var(--led-rec); }
+.pedal:active:not(:disabled) { transform:translateY(4px); border-bottom-width:0; }
+.pedal:disabled { opacity:.35; cursor:not-allowed; }
+.pedal-label { color:var(--text-label); font:700 10px monospace; letter-spacing:1px; }
 
-.pedal:active:not(:disabled) {
-  transform: translateY(4px);
-  border-bottom: 0px solid var(--pedal-border-bottom);
-  border-top: 4px solid #111;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.8), inset 0 5px 10px rgba(0,0,0,0.9);
+.global-transport { display:flex; justify-content:center; align-items:center; gap:28px; padding-top:2px; }
+.global-transport .pedal { width:130px; height:58px; font-size:13px; }
+
+.init-overlay { position:fixed; inset:0; background:rgba(8,8,8,.96); display:flex; align-items:center; justify-content:center; z-index:1000; backdrop-filter:blur(8px); }
+.init-dialog { background:var(--chassis-panel); padding:36px; border-radius:12px; border:1px solid #444; text-align:center; box-shadow:0 15px 35px rgba(0,0,0,.8); display:flex; flex-direction:column; align-items:center; gap:18px; }
+.init-dialog h2 { color:#fff; font:700 22px monospace; letter-spacing:2px; margin:0; }
+.power-btn { width:80px; height:80px; border-radius:50%; background:#111; border:2px solid #333; color:var(--led-play); font-size:24px; cursor:pointer; box-shadow:0 5px 15px #000, inset 0 2px 5px rgba(255,255,255,.1); }
+.power-btn:hover { color:#fff; text-shadow:0 0 10px var(--led-play); }
+
+@media (max-width: 800px) {
+  .app-container { padding:12px; }
+  .lcd-panel { min-width:0; width:100%; }
+  .lcd-stats { gap:12px; font-size:11px; }
+  .tracks-bay { overflow-x:auto; }
+  .tracks-container { width:max-content; min-width:100%; }
+  .track-column { flex:0 0 150px; }
 }
-
-.pedal:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.pedal-label {
-  font-size: 11px;
-  color: var(--text-label);
-  font-weight: 600;
-  text-align: center;
-  text-transform: uppercase;
-  margin-top: var(--spacing-xs);
-}
-
-/* -------------------------------------
-   GLOBAL TRANSPORT
--------------------------------------- */
-.global-transport {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: var(--spacing-xl);
-  padding: var(--spacing-lg) 0 0 0;
-}
-
-.global-transport .pedal {
-  width: 120px;
-  height: 60px;
-}
-
-/* -------------------------------------
-   INITIALIZATION OVERLAY
--------------------------------------- */
-.init-overlay {
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background-color: rgba(10, 10, 10, 0.95);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  backdrop-filter: blur(8px);
-}
-
-.init-dialog {
-  background: var(--chassis-panel);
-  padding: var(--spacing-xl);
-  border-radius: 12px;
-  border: 1px solid #444;
-  text-align: center;
-  box-shadow: 0 15px 35px rgba(0,0,0,0.8), inset 0 2px 2px rgba(255,255,255,0.1);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--spacing-lg);
-}
-
-.init-dialog h2 {
-  color: #fff;
-  font-family: monospace;
-  letter-spacing: 2px;
-  margin: 0;
-}
-
-.power-btn {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background: #111;
-  border: 2px solid #333;
-  color: var(--led-play);
-  font-size: 24px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.8), inset 0 2px 5px rgba(255,255,255,0.1);
-  transition: all 0.1s ease;
-}
-
-.power-btn:hover {
-  color: #fff;
-  text-shadow: 0 0 10px var(--led-play);
-  border-color: #555;
-}
-
-.power-btn:active {
-  transform: scale(0.95);
-  box-shadow: inset 0 5px 10px rgba(0,0,0,0.8);
-}
-
