@@ -93,7 +93,11 @@ describe('PlaybackEngine', () => {
     expect(engine.isTrackPlaying('track-1')).toBe(false);
     expect(engine.isTrackPlaying('track-2')).toBe(true);
 
+    // The playback origin is 10s while the test clock starts at 0s. The
+    // scheduler intentionally uses a finite look-ahead, so replenish after
+    // advancing the clock to the origin before asking it to dispatch the event.
     mockTime = 10.0;
+    engine.replenish();
     audioScheduler.tick();
     expect(adapter.createdSources.length).toBe(1);
   });
