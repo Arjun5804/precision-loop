@@ -4,9 +4,9 @@ import { AudioScheduler, AudioTimeSource } from '@precision-loop/audio-scheduler
 import { RecordingEngine, RecordingState } from '@precision-loop/recording-engine';
 import { PlaybackEngine, WebResourceAdapter } from '@precision-loop/playback-engine';
 import { Transport } from '@precision-loop/transport';
-import { MusicalClock } from '@precision-loop/musical-clock';
+import { MusicalClock, Tempo, TimeSignature } from '@precision-loop/musical-clock';
 
-import { AppState, ApplicationConfig } from './types';
+import { AppState, ApplicationConfig, TrackRecordingSettings, DEFAULT_TRACK_SETTINGS } from './types';
 import { EngineLoop } from './EngineLoop';
 import { ApplicationEventRouter } from './ApplicationEventRouter';
 import { adaptRecordedTake } from './adapters/recording-adapter';
@@ -27,6 +27,7 @@ export class ApplicationController {
     private playbackSessionCounter = 0;
     private activeTransport: Transport | null = null;
     private activeRecordingTrackId: string | null = null;
+    private trackSettings: Map<string, TrackRecordingSettings> = new Map();
 
     constructor(private config: ApplicationConfig, private engineLoop: EngineLoop) {
         this.session = new Session('session_1', 120, { numerator: 4, denominator: 4 });
@@ -61,6 +62,8 @@ export class ApplicationController {
         });
     }
 
+    // ─── State ────────────────────────────────────────────────────
+
     public getState(): AppState { return this._state; }
     public onStateChange(listener: (state: AppState) => void): () => void {
         this.stateListeners.add(listener);
@@ -77,9 +80,67 @@ export class ApplicationController {
     public hasActivePlayback(): boolean { return !!this.playbackEngine?.hasActivePlayback(); }
     public async resumeAudio(): Promise<void> { await this.audioEngine.resume(); }
 
+    // ─── Per-Track Recording Settings ─────────────────────────────
+
+    public getTrackSettings(trackId: string): TrackRecordingSettings {
+        return this.trackSettings.get(trackId) ?? { ...DEFAULT_TRACK_SETTINGS };
+    }
+
+    public setTrackSettings(trackId: string, settings: Partial<TrackRecordingSettings>): void {
+        const current = this.getTrackSettings(trackId);
+        this.trackSettings.set(trackId, { ...current, ...settings });
+        // Emit a state change so UI re-renders
+        this.setState(this._state);
+    }
+
+    // ─── Session-Level Controls ───────────────────────────────────
+
+    public setTempo(tempo: Tempo): void {
+        this.session.setTempo(tempo); // Session validates no-loops-exist
+        this.setState(this._state);   // re-render
+    }
+
+    public setTimeSignature(ts: TimeSignature): void {
+        this.session.setTimeSignature(ts); // Session validates no-loops-exist
+        this.setState(this._state);         // re-render
+    }
+
+    // ─── Dynamic Track Management ─────────────────────────────────
+
+    public addTrack(): string {
+        const track = this.session.createTrack();
+        this.trackSettings.set(track.id, { ...DEFAULT_TRACK_SETTINGS });
+        this.setState(this._state); // re-render
+        return track.id;
+    }
+
+    public removeTrack(trackId: string): void {
+        const tracks = this.session.getTracks();
+        if (tracks.length <= 1) {
+            throw new ApplicationStateError('Cannot remove the last track');
+        }
+        if (this.activeRecordingTrackId === trackId) {
+            throw new ApplicationStateError('Cannot remove a track that is currently recording');
+        }
+        // Stop playback on the track if it's playing
+        if (this.isTrackPlaying(trackId)) {
+            this.playbackEngine.stopTrack(trackId);
+        }
+        this.session.removeTrack(trackId);
+        this.trackSettings.delete(trackId);
+
+        // Update global state
+        if (!this.hasActivePlayback() && !this.activeTransport) {
+            this.setState('IDLE');
+        } else {
+            this.setState(this._state);
+        }
+    }
+
+    // ─── Recording ────────────────────────────────────────────────
+
     /** Record a new loop without interrupting already-playing tracks. */
-    /** Record a new loop without interrupting already-playing tracks. */
-    public async startRecording(trackId: string, countInBars: number, recordingBars?: number): Promise<void> {
+    public async startRecording(trackId: string): Promise<void> {
         if (this._state !== 'IDLE' && this._state !== 'PLAYING') {
             throw new ApplicationStateError(`Cannot start recording from state: ${this._state}`);
         }
@@ -87,6 +148,10 @@ export class ApplicationController {
         if (!track) throw new ApplicationStateError(`Track ${trackId} not found`);
         if (track.getLoop()) throw new ApplicationStateError(`Track ${trackId} already contains a loop`);
         if (this.activeTransport) throw new ApplicationStateError('A recording is already active');
+
+        const settings = this.getTrackSettings(trackId);
+        const countInBars = settings.countInBars;
+        const recordingBars = settings.mode === 'BAR' ? settings.recordingBars : undefined;
 
         this.activeRecordingTrackId = trackId;
         this.setState('PREPARING');
@@ -107,9 +172,6 @@ export class ApplicationController {
             if (!recordedTake) throw new Error('Transport completed but returned no take');
             const take = adaptRecordedTake(this.session, recordedTake);
             
-            // If recordingBars was not provided, calculate the actual number of bars recorded.
-            // A professional loop station rounds to the nearest musical subdivision or bar, but
-            // since we quantized the end time in finalizeRecording, we just use the strict mathematical conversion.
             let actualBars = recordingBars ?? 4;
             if (recordingBars === undefined && take.sourceStartTime !== undefined && take.sourceEndTime !== undefined) {
                 const takeDurationSeconds = take.sourceEndTime - take.sourceStartTime;
@@ -152,9 +214,7 @@ export class ApplicationController {
         // Calculate how many seconds have elapsed since recording started
         const elapsedSinceRecordingStart = now - plan.recordingStartTime;
         
-        // Find the nearest bar boundary (round up if we are at least half a beat in, etc.)
-        // But for a loop station, typically you hit it on the downbeat of the NEXT bar,
-        // so we round to the nearest bar.
+        // Quantize to nearest bar boundary
         const elapsedBars = clock.secondsToBars(elapsedSinceRecordingStart);
         const quantizedBars = Math.max(1, Math.round(elapsedBars));
         
@@ -175,6 +235,8 @@ export class ApplicationController {
         this.activeRecordingTrackId = null;
         this.setState(this.hasActivePlayback() ? 'PLAYING' : 'IDLE');
     }
+
+    // ─── Playback ─────────────────────────────────────────────────
 
     /** Start all existing loops on one shared musical origin. */
     public startPlayback(): void {

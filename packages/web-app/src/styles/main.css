@@ -35,7 +35,7 @@ button { font: inherit; }
 }
 
 .app-container {
-  width: min(1180px, 100%);
+  width: min(1400px, 100%);
   min-height: 760px;
   max-height: calc(100vh - 36px);
   overflow: hidden;
@@ -49,9 +49,11 @@ button { font: inherit; }
   gap: 18px;
 }
 
+/* ─── LCD Panel ────────────────────────────────────────────── */
+
 .lcd-panel-container { display: flex; justify-content: center; }
 .lcd-panel {
-  width: min(570px, 80%);
+  width: min(640px, 90%);
   padding: 16px 28px 14px;
   background: radial-gradient(ellipse at center, #123a2d 0, var(--lcd-bg) 70%);
   border: 4px solid #050606;
@@ -60,20 +62,101 @@ button { font: inherit; }
   text-align: center;
 }
 .lcd-title {
-  margin: 0 0 9px;
+  margin: 0 0 12px;
   color: var(--lcd-text);
   font: 800 23px/1.1 ui-monospace, SFMono-Regular, Menlo, monospace;
   letter-spacing: 4px;
   text-shadow: 0 0 9px rgba(66,245,138,.55);
 }
-.lcd-stats {
+
+.lcd-controls {
   display: flex;
-  justify-content: space-between;
-  gap: 20px;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+
+.lcd-control-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.lcd-control-label {
+  color: rgba(66,245,138,.5);
+  font: 700 10px ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 2px;
+}
+
+.lcd-control-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.lcd-btn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid #1a4a3a;
+  border-radius: 4px;
+  background: #0a1a14;
   color: var(--lcd-text);
-  font: 600 14px ui-monospace, SFMono-Regular, Menlo, monospace;
+  font: 700 16px ui-monospace;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .1s;
+}
+.lcd-btn:hover:not(:disabled) { background: #153528; }
+.lcd-btn:disabled { opacity: .3; cursor: not-allowed; }
+
+.lcd-input {
+  width: 56px;
+  height: 28px;
+  border: 1px solid #1a4a3a;
+  border-radius: 4px;
+  background: #061410;
+  color: var(--lcd-text);
+  font: 700 15px ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-align: center;
+  outline: none;
   text-shadow: 0 0 7px rgba(66,245,138,.4);
 }
+.lcd-input:disabled { opacity: .4; }
+.lcd-input:focus { border-color: var(--lcd-text); box-shadow: 0 0 6px rgba(66,245,138,.3); }
+
+.lcd-select {
+  height: 28px;
+  border: 1px solid #1a4a3a;
+  border-radius: 4px;
+  background: #0a1a14;
+  color: var(--lcd-text);
+  font: 700 13px ui-monospace, SFMono-Regular, Menlo, monospace;
+  padding: 0 8px;
+  cursor: pointer;
+  outline: none;
+}
+.lcd-select:disabled { opacity: .4; cursor: not-allowed; }
+.lcd-select option { background: #0a1a14; color: var(--lcd-text); }
+
+.lcd-status-value {
+  color: var(--lcd-text);
+  font: 700 15px ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-shadow: 0 0 7px rgba(66,245,138,.4);
+  min-width: 80px;
+}
+
+.lcd-lock-notice {
+  margin-top: 8px;
+  color: rgba(66,245,138,.35);
+  font: 600 10px ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 1px;
+}
+
+/* ─── Tracks Bay ───────────────────────────────────────────── */
 
 .tracks-bay {
   min-height: 0;
@@ -82,14 +165,17 @@ button { font: inherit; }
   border: 1px solid #050506;
   border-radius: 11px;
   box-shadow: inset 0 9px 22px rgba(0,0,0,.9), inset 0 -1px 0 rgba(255,255,255,.035);
+  overflow-y: auto;
 }
 
 .tracks-container {
   height: 100%;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
   gap: 12px;
 }
+
+/* ─── Track Column ─────────────────────────────────────────── */
 
 .track-column {
   min-width: 0;
@@ -105,27 +191,149 @@ button { font: inherit; }
   position: relative;
 }
 
+/* ─── Track Header ─────────────────────────────────────────── */
+
+.track-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.track-header-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.track-settings-btn,
+.track-delete-btn,
+.track-clear-btn {
+  width: 26px;
+  height: 26px;
+  border: 1px solid #3b3d40;
+  border-radius: 4px;
+  background: #141516;
+  color: #8a8f94;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: color .15s, border-color .15s;
+}
+.track-settings-btn:hover { color: var(--lcd-text); border-color: var(--lcd-text); }
+.track-delete-btn:hover { color: var(--led-rec); border-color: var(--led-rec); }
+.track-clear-btn:hover { color: var(--led-countin); border-color: var(--led-countin); }
+
 .track-number-plate {
   flex: none;
-  padding: 6px 18px;
+  padding: 5px 14px;
   background: #090a0b;
   border: 1px solid #3b3d40;
   border-radius: 999px;
   color: #f0f2f3;
-  font: 800 13px ui-monospace, SFMono-Regular, Menlo, monospace;
+  font: 800 12px ui-monospace, SFMono-Regular, Menlo, monospace;
   letter-spacing: 1.5px;
   box-shadow: inset 0 2px 5px rgba(0,0,0,.7), 0 1px 0 rgba(255,255,255,.04);
 }
 
+/* ─── Track Settings Panel ─────────────────────────────────── */
+
+.track-settings-panel {
+  width: 100%;
+  margin: 6px 0;
+  padding: 8px 10px;
+  background: #111213;
+  border: 1px solid #2a2c2e;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.setting-label {
+  color: #7a7f84;
+  font: 700 9px ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 1px;
+  min-width: 56px;
+}
+
+.setting-unit {
+  color: #5a5f64;
+  font: 700 9px ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 1px;
+}
+
+.setting-input {
+  width: 44px;
+  height: 24px;
+  border: 1px solid #2a2c2e;
+  border-radius: 3px;
+  background: #0a0b0c;
+  color: var(--text);
+  font: 700 12px ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-align: center;
+  outline: none;
+  -moz-appearance: textfield;
+}
+.setting-input::-webkit-inner-spin-button,
+.setting-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.setting-input:focus { border-color: var(--lcd-text); }
+
+.mode-toggle {
+  display: flex;
+  border: 1px solid #2a2c2e;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.mode-btn {
+  padding: 3px 10px;
+  border: none;
+  background: #0a0b0c;
+  color: #6a6f74;
+  font: 700 9px ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.mode-btn.active {
+  background: #1a3a2d;
+  color: var(--lcd-text);
+  text-shadow: 0 0 6px rgba(66,245,138,.3);
+}
+.mode-btn:hover:not(.active) { background: #151617; }
+
+.track-mode-badge {
+  color: #4a4f54;
+  font: 700 9px ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.5px;
+}
+
+/* ─── Track Status ─────────────────────────────────────────── */
+
 .track-status-line {
   width: 100%;
-  min-height: 66px;
-  margin: 12px 0 6px;
+  min-height: 50px;
+  margin: 8px 0 6px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 5px;
 }
 .status-dot {
   width: 14px;
@@ -148,6 +356,46 @@ button { font: inherit; }
 .track-column.is-playing { border-color: rgba(53,240,107,.45); box-shadow: 0 0 0 1px rgba(53,240,107,.12), 0 8px 14px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.07); }
 .track-column.is-count-in { border-color: rgba(255,173,50,.6); }
 
+/* ─── Add Track Card ───────────────────────────────────────── */
+
+.add-track-card {
+  border: 2px dashed #2a2c2e;
+  background: transparent;
+  cursor: pointer;
+  justify-content: center;
+  gap: 10px;
+  transition: border-color .2s, background .2s;
+  min-height: 200px;
+}
+.add-track-card:hover {
+  border-color: rgba(66,245,138,.4);
+  background: rgba(66,245,138,.03);
+}
+.add-track-icon {
+  width: 48px;
+  height: 48px;
+  border: 2px solid #3a3c3e;
+  border-radius: 50%;
+  color: #5a5f64;
+  font: 300 28px/44px ui-monospace;
+  text-align: center;
+  transition: color .2s, border-color .2s;
+}
+.add-track-card:hover .add-track-icon {
+  color: var(--lcd-text);
+  border-color: var(--lcd-text);
+  text-shadow: 0 0 8px rgba(66,245,138,.4);
+}
+.add-track-label {
+  color: #4a4f54;
+  font: 800 11px ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 2px;
+  transition: color .2s;
+}
+.add-track-card:hover .add-track-label { color: var(--lcd-text); }
+
+/* ─── Pedal ────────────────────────────────────────────────── */
+
 .pedal-container {
   width: 100%;
   margin-top: auto;
@@ -159,7 +407,7 @@ button { font: inherit; }
 
 .pedal {
   width: min(150px, 76%);
-  height: 142px;
+  height: 130px;
   flex: none;
   border: 0;
   border-top: 4px solid #46484b;
@@ -198,16 +446,20 @@ button { font: inherit; }
   letter-spacing: 2px;
 }
 
+/* ─── Global Transport ─────────────────────────────────────── */
+
 .global-transport {
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 36px;
-  min-height: 112px;
+  min-height: 100px;
 }
 .global-pedal { width: 170px; margin: 0; }
-.global-pedal .pedal { width: 160px; height: 72px; border-radius: 9px; }
+.global-pedal .pedal { width: 160px; height: 64px; border-radius: 9px; }
 .global-pedal .pedal-switch { width: 88px; height: 24px; border-radius: 4px; }
+
+/* ─── Init Overlay ─────────────────────────────────────────── */
 
 .init-overlay {
   position: fixed;
@@ -244,23 +496,24 @@ button { font: inherit; }
 .power-btn:hover { color: #fff; text-shadow: 0 0 15px var(--led-play); border-color: #65686b; }
 .power-btn:active { transform: scale(.96); }
 
+/* ─── Responsive ───────────────────────────────────────────── */
+
 @media (max-height: 820px) {
   #root { padding: 10px; }
   .app-container { min-height: 0; max-height: calc(100vh - 20px); padding: 16px 20px 14px; gap: 12px; }
   .lcd-panel { padding: 10px 22px; }
   .lcd-title { font-size: 19px; margin-bottom: 6px; }
-  .lcd-stats { font-size: 12px; }
   .tracks-bay { padding: 10px; }
   .track-column { padding-top: 10px; }
-  .track-status-line { min-height: 50px; margin: 8px 0 2px; }
-  .pedal { height: 118px; }
-  .global-transport { min-height: 86px; }
+  .track-status-line { min-height: 40px; margin: 6px 0 2px; }
+  .pedal { height: 110px; }
+  .global-transport { min-height: 80px; }
 }
 
 @media (max-width: 900px) {
   #root { align-items: flex-start; overflow: auto; }
   .app-container { max-height: none; min-height: calc(100vh - 20px); }
-  .tracks-container { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tracks-container { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
 }
 
 @media (max-width: 560px) {
@@ -268,5 +521,5 @@ button { font: inherit; }
   .tracks-container { grid-template-columns: 1fr; }
   .tracks-bay { overflow: auto; }
   .lcd-panel { width: 100%; }
-  .lcd-stats { flex-wrap: wrap; justify-content: center; }
+  .lcd-controls { flex-direction: column; align-items: center; gap: 12px; }
 }

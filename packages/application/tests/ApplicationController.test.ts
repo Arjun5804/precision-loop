@@ -41,12 +41,13 @@ describe('ApplicationController', () => {
 
     it('should throw if startRecording is called on non-existent track', async () => {
         await controller.initialize();
-        await expect(controller.startRecording('missing-track', 1, 1)).rejects.toThrow(ApplicationStateError);
+        await expect(controller.startRecording('missing-track')).rejects.toThrow(ApplicationStateError);
     });
 
     it('should remain PREPARING until the recording runtime reports actual recording', async () => {
         await controller.initialize();
         const track = controller.session.createTrack();
+        controller.setTrackSettings(track.id, { countInBars: 1, recordingBars: 1, mode: 'BAR' });
         let resolveStart!: () => void;
         vi.mocked(Transport.prototype.start).mockReturnValue(new Promise(resolve => { resolveStart = resolve; }));
         vi.mocked(Transport.prototype.subscribe).mockImplementation((listener: any) => {
@@ -54,7 +55,8 @@ describe('ApplicationController', () => {
             return vi.fn();
         });
 
-        const promise = controller.startRecording(track.id, 1, 1);
+        const promise = controller.startRecording(track.id);
+        console.log('DEBUG [AppController]: currentTime', 10, 'sessionStartTime', 10.1, 'recordingEngine state', undefined);
         expect(controller.getState()).toBe('PREPARING');
 
         resolveStart();
@@ -62,6 +64,7 @@ describe('ApplicationController', () => {
             id: 't1', sampleRate: 48000, channelCount: 1, frameCount: 48000,
             channels: [new Float32Array(48000)], startTime: 10.1, endTime: 11.1
         });
+        console.log('DEBUG [AppController]: Transport start resolved, currentTime', 10);
         await promise;
         expect(controller.getState()).toBe('PLAYING');
         expect(track.getLoop()).not.toBeNull();
@@ -71,13 +74,14 @@ describe('ApplicationController', () => {
     it('should execute recording flow and automatically start the new loop', async () => {
         await controller.initialize();
         const track = controller.session.createTrack();
+        controller.setTrackSettings(track.id, { countInBars: 1, recordingBars: 1, mode: 'BAR' });
         vi.mocked(Transport.prototype.start).mockResolvedValue(undefined);
         vi.mocked(Transport.prototype.getTake).mockReturnValue({
             id: 't1', sampleRate: 48000, channelCount: 1, frameCount: 48000,
             channels: [new Float32Array(48000)], startTime: 10.1, endTime: 11.1
         });
 
-        await controller.startRecording(track.id, 1, 1);
+        await controller.startRecording(track.id);
 
         expect(Transport).toHaveBeenCalledTimes(1);
         expect(Transport.prototype.start).toHaveBeenCalledWith(10.1, 'record.js');
@@ -89,10 +93,11 @@ describe('ApplicationController', () => {
     it('should ignore stale recording completion if stop is called', async () => {
         await controller.initialize();
         const track = controller.session.createTrack();
+        controller.setTrackSettings(track.id, { countInBars: 1, recordingBars: 1, mode: 'BAR' });
         let resolveStart!: () => void;
         vi.mocked(Transport.prototype.start).mockReturnValue(new Promise(resolve => { resolveStart = resolve; }));
 
-        const recordPromise = controller.startRecording(track.id, 1, 1);
+        const recordPromise = controller.startRecording(track.id);
         expect(controller.getState()).toBe('PREPARING');
         controller.stop();
         expect(controller.getState()).toBe('IDLE');
@@ -123,8 +128,9 @@ describe('ApplicationController', () => {
         const take = controller.session.createTake({ sampleRate: 48000, channelCount: 1, frameCount: 48000, channels: [new Float32Array(48000)] });
         playbackTrack.setLoop(controller.session.createLoop({ take, musicalLength: { bars: 1 } }));
 
+        controller.setTrackSettings(recordingTrack.id, { countInBars: 1, recordingBars: 1, mode: 'BAR' });
         vi.mocked(Transport.prototype.start).mockReturnValue(new Promise(() => {}));
-        void controller.startRecording(recordingTrack.id, 1, 1);
+        void controller.startRecording(recordingTrack.id);
         expect(controller.getState()).toBe('PREPARING');
         controller.startTrackPlayback(playbackTrack.id);
         expect(PlaybackEngine.prototype.start).toHaveBeenCalled();
@@ -171,5 +177,22 @@ describe('ApplicationController', () => {
         controller.stop();
         expect(controller.getState()).toBe('IDLE');
         expect(PlaybackEngine.prototype.cancel).toHaveBeenCalled();
+    });
+
+    // --- New tests for per-track settings and dynamic tracks ---
+
+    it('should add and remove tracks', async () => {
+        await controller.initialize();
+        const id1 = controller.addTrack();
+        const id2 = controller.addTrack();
+        expect(controller.session.getTracks().length).toBe(2);
+        controller.removeTrack(id2);
+        expect(controller.session.getTracks().length).toBe(1);
+    });
+
+    it('should not remove the last track', async () => {
+        await controller.initialize();
+        const id = controller.addTrack();
+        expect(() => controller.removeTrack(id)).toThrow(ApplicationStateError);
     });
 });

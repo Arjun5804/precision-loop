@@ -16,13 +16,11 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
             {
                 recordingWorkletUrl: new URL('/worklets/recording.js', window.location.href).href,
                 foundationWorkletUrl: new URL('/worklets/foundation.js', window.location.href).href,
-                sessionLeadTimeSeconds: 0.1
+                sessionLeadTimeSeconds: 0.3
             },
             engineLoop
         );
-        for (let i = 0; i < 4; i++) {
-            appController.session.createTrack();
-        }
+        appController.addTrack();
         return appController;
     });
     const [isInitialized, setIsInitialized] = useState(false);
