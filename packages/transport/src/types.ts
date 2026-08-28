@@ -5,7 +5,8 @@ export interface TransportConfig {
   tempo: Tempo;
   timeSignature: TimeSignature;
   countInBars: number;
-  recordingBars: number;
+  /** Number of bars to record. If undefined, recording is open-ended. */
+  recordingBars?: number;
 }
 
 export interface ClickEvent {

@@ -126,13 +126,17 @@ export class RecordingEngine {
 
     const currentAbsoluteFrame = timeToFrame(this.context.currentTime, this.context.sampleRate);
     const minLookaheadFrames = timeToFrame(0.05, this.context.sampleRate); // 50ms lookahead
+    console.log('DEBUG [RecordingEngine]: arm() window.startTime', window.startTime, 'context.currentTime', this.context.currentTime, 'startFrame', startFrame, 'currentFrame', currentAbsoluteFrame);
     if (startFrame < currentAbsoluteFrame + minLookaheadFrames) {
+      console.error('DEBUG [RecordingEngine]: arm() InvalidWindowError!', 'startFrame', startFrame, 'currentAbsoluteFrame', currentAbsoluteFrame, 'minLookaheadFrames', minLookaheadFrames);
       throw new InvalidWindowError('startFrame must be in the future with sufficient lookahead (>=50ms)');
     }
 
-    const maxFrames = timeToFrame(this.config.maxDurationSeconds!, this.context.sampleRate);
-    if ((endFrame - startFrame) > maxFrames) {
-      throw new BufferLimitExceededError();
+    if (window.endTime !== Infinity) {
+      const maxFrames = timeToFrame(this.config.maxDurationSeconds!, this.context.sampleRate);
+      if ((endFrame - startFrame) > maxFrames) {
+        throw new BufferLimitExceededError();
+      }
     }
 
     this.activeWindow = window;
@@ -168,8 +172,25 @@ export class RecordingEngine {
     }
   }
 
+  /**
+   * Finalizes an open-ended recording window.
+   */
+  finalize(endTime: number): void {
+    if (this._state !== 'ARMED' && this._state !== 'RECORDING') {
+      return;
+    }
+    
+    if (!this.activeWindow) return;
+    this.activeWindow.endTime = endTime;
+    
+    const endFrame = timeToFrame(endTime, this.context.sampleRate);
+    console.log('DEBUG [RecordingEngine]: finalize() endTime:', endTime, 'endFrame:', endFrame);
+    this.workletNode?.finalize(endFrame);
+  }
+
   private handleWorkletMessage(msg: MainMessage): void {
     if (msg.type === 'CHUNK') {
+      console.log('DEBUG [RecordingEngine]: Received CHUNK, state is', this._state, 'frameCount:', msg.frameCount);
       if (this._state === 'ARMED') {
         this.setState('RECORDING');
       }
@@ -214,20 +235,21 @@ export class RecordingEngine {
   }
 
   private finalizeTake(): RecordedTake {
-    const startFrame = timeToFrame(this.activeWindow!.startTime, this.context.sampleRate);
-    const endFrame = timeToFrame(this.activeWindow!.endTime, this.context.sampleRate);
-    const expectedFrameCount = endFrame - startFrame;
-
-    if (this.currentFrameCount !== expectedFrameCount) {
-      throw new FinalizationFailureError(`Expected ${expectedFrameCount} frames, but got ${this.currentFrameCount}`);
+    const totalFrames = timeToFrame(this.activeWindow!.endTime - this.activeWindow!.startTime, this.context.sampleRate);
+    if (this.currentFrameCount < totalFrames) {
+      throw new FinalizationFailureError(`Expected at least ${totalFrames} frames, but got ${this.currentFrameCount}`);
     }
 
-    const totalFrames = this.currentFrameCount;
     const channelData = new Float32Array(totalFrames);
+
     let offset = 0;
     for (const chunk of this.chunks) {
-      channelData.set(chunk, offset);
-      offset += chunk.length;
+      const remainingFrames = totalFrames - offset;
+      if (remainingFrames <= 0) break;
+      
+      const slice = chunk.length > remainingFrames ? chunk.subarray(0, remainingFrames) : chunk;
+      channelData.set(slice, offset);
+      offset += slice.length;
     }
 
     return {

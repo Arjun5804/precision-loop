@@ -17,8 +17,8 @@ export function validateConfig(config: TransportConfig): void {
   if (config.countInBars < 0 || !Number.isInteger(config.countInBars)) {
     throw new InvalidConfigurationError('countInBars must be a non-negative integer');
   }
-  if (config.recordingBars <= 0 || !Number.isInteger(config.recordingBars)) {
-    throw new InvalidConfigurationError('recordingBars must be a positive integer');
+  if (config.recordingBars !== undefined && (config.recordingBars <= 0 || !Number.isInteger(config.recordingBars))) {
+    throw new InvalidConfigurationError('recordingBars must be a positive integer or undefined');
   }
 }
 
@@ -33,10 +33,13 @@ export function planSession(
   validateConfig(config);
 
   const countInDuration = clock.barsToSeconds(config.countInBars);
-  const recordingDuration = clock.barsToSeconds(config.recordingBars);
-
   const recordingStartTime = sessionStartTime + countInDuration;
-  const recordingEndTime = recordingStartTime + recordingDuration;
+  
+  let recordingEndTime = Infinity;
+  if (config.recordingBars !== undefined) {
+    const recordingDuration = clock.barsToSeconds(config.recordingBars);
+    recordingEndTime = recordingStartTime + recordingDuration;
+  }
 
   const countInEvents: ClickEvent[] = [];
 

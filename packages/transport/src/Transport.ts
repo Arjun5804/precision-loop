@@ -13,6 +13,7 @@ export class Transport {
   private currentTake: RecordedTake | null = null;
   private generation: number = 0;
   private listeners: Set<TransportListener> = new Set();
+  private transportId: string = crypto.randomUUID();
   
   private config: TransportConfig | null = null;
 
@@ -123,6 +124,17 @@ export class Transport {
     this.setState('IDLE');
   }
 
+  /**
+   * Dynamically finalizes an open-ended recording session at the specified audio time.
+   */
+  public finalize(endTime: AudioTime): void {
+    console.log('DEBUG [Transport]: finalize() state:', this._state, 'endTime:', endTime);
+    if (this._state !== 'ACTIVE') {
+      return;
+    }
+    this.recordingEngine.finalize(endTime);
+  }
+
   public getState(): TransportState {
     return this._state;
   }
@@ -154,7 +166,7 @@ export class Transport {
   }
 
   private getEventId(click: ClickEvent, generation: number): string {
-    return `click-gen${generation}-${click.barIndex}-${click.beatIndex}`;
+    return `click-${this.transportId}-gen${generation}-${click.barIndex}-${click.beatIndex}`;
   }
 
   private mapToScheduledEvent(click: ClickEvent, generation: number): ScheduledEvent {

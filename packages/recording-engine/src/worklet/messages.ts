@@ -1,5 +1,6 @@
 export type WorkletMessage =
   | { type: 'ARM'; startFrame: number; endFrame: number }
+  | { type: 'FINALIZE'; endFrame: number }
   | { type: 'CANCEL' };
 
 export type MainMessage =

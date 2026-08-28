@@ -22,13 +22,24 @@ export const TrackControl: React.FC<TrackControlProps> = ({ track, index }) => {
     const isEmpty = !hasLoop && !isRecordingTrack;
 
     const handleAction = () => {
+        console.log('DEBUG [TrackControl]: handleAction', track.id, 'isEmpty', isEmpty, 'isCountIn', isCountIn, 'isRecording', isRecording, 'isPlaying', isPlaying, 'isReadyOrStopped', isReadyOrStopped, 'appState', appState);
         try {
             if (isEmpty) {
                 if (appState === 'IDLE' || appState === 'PLAYING') {
-                    void controller.startRecording(track.id, 1, 4).catch(err => console.error('Recording failed', err));
+                    // Start open-ended recording with 1 bar count-in
+                    void controller.startRecording(track.id, 1, undefined).catch(err => {
+                        console.error('Recording failed', err);
+                        let c = err.cause;
+                        while(c) {
+                            console.error('Caused by:', c);
+                            c = c.cause;
+                        }
+                    });
                 }
-            } else if (isCountIn || isRecording) {
-                controller.stopRecording();
+            } else if (isCountIn) {
+                controller.stopRecording(); // Abort count-in
+            } else if (isRecording) {
+                controller.finalizeRecording(); // Lock the loop length and play
             } else if (isPlaying) {
                 controller.stopTrack(track.id);
             } else if (isReadyOrStopped) {

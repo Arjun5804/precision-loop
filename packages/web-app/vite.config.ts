@@ -10,7 +10,7 @@ export default defineConfig({
     ]
   },
   optimizeDeps: {
-    include: [
+    exclude: [
       '@precision-loop/application',
       '@precision-loop/loop-model',
       '@precision-loop/audio-engine',

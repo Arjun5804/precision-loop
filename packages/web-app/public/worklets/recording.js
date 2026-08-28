@@ -12,6 +12,10 @@ class RecordingProcessor extends AudioWorkletProcessor {
                 this.endFrame = msg.endFrame;
                 this.active = true;
             }
+            else if (msg.type === 'FINALIZE') {
+                console.log('DEBUG [recording-processor]: Received FINALIZE', 'endFrame', msg.endFrame);
+                this.endFrame = msg.endFrame;
+            }
             else if (msg.type === 'CANCEL') {
                 this.active = false;
                 this.startFrame = null;
@@ -27,9 +31,17 @@ class RecordingProcessor extends AudioWorkletProcessor {
         const blockStartFrame = currentFrame; // Absolute context frame timeline
         const blockEndFrame = blockStartFrame + channelData.length;
         // Check if current block intersects with [startFrame, endFrame)
-        if (blockEndFrame <= this.startFrame || blockStartFrame >= this.endFrame) {
+        if (blockEndFrame <= this.startFrame) {
             return true;
         }
+        if (blockStartFrame >= this.endFrame) {
+            this.active = false;
+            this.startFrame = null;
+            this.endFrame = null;
+            this.port.postMessage({ type: 'COMPLETED' });
+            return true;
+        }
+        console.log('DEBUG [recording-processor]: Intersection!', 'blockStartFrame', blockStartFrame, 'blockEndFrame', blockEndFrame, 'startFrame', this.startFrame, 'endFrame', this.endFrame);
         // Intersection
         const captureStart = Math.max(blockStartFrame, this.startFrame);
         const captureEnd = Math.min(blockEndFrame, this.endFrame);

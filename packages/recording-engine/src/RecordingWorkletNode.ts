@@ -15,6 +15,10 @@ export class RecordingWorkletNode {
     this.node.port.postMessage({ type: 'ARM', startFrame, endFrame } as WorkletMessage);
   }
 
+  finalize(endFrame: number): void {
+    this.node.port.postMessage({ type: 'FINALIZE', endFrame } as WorkletMessage);
+  }
+
   cancel(): void {
     this.node.port.postMessage({ type: 'CANCEL' } as WorkletMessage);
   }

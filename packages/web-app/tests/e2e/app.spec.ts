@@ -32,8 +32,12 @@ test.describe('Precision Loop hardware workflow', () => {
     await expect(track1).toHaveAttribute('data-track-state', 'RECORDING', { timeout: 5000 });
     await expect(page.locator('[data-testid="app-state-label"]')).toHaveText(/STS: RECORDING/);
 
+    // Finalize recording (open-ended workflow requires manual stop/finalize)
+    await page.waitForTimeout(2000);
+    await track1.locator('button[aria-label="Track 1 STOP"]').click();
+
     // Closing a loop immediately starts that loop, as expected from a looper.
-    await expect(track1).toHaveAttribute('data-track-state', 'PLAYING', { timeout: 30000 });
+    await expect(track1).toHaveAttribute('data-track-state', 'PLAYING', { timeout: 10000 });
     await expect(track1.locator('button[aria-label="Track 1 STOP"]')).toBeVisible();
   });
 
@@ -46,7 +50,10 @@ test.describe('Precision Loop hardware workflow', () => {
 
     // Record Track 1; it should automatically begin playing.
     await track1.locator('button[aria-label="Track 1 REC"]').click();
-    await expect(track1).toHaveAttribute('data-track-state', 'PLAYING', { timeout: 30000 });
+    await expect(track1).toHaveAttribute('data-track-state', 'RECORDING', { timeout: 10000 });
+    await page.waitForTimeout(2000);
+    await track1.locator('button[aria-label="Track 1 STOP"]').click();
+    await expect(track1).toHaveAttribute('data-track-state', 'PLAYING', { timeout: 10000 });
 
     // Record Track 2 while Track 1 continues playing.
     await track2.locator('button[aria-label="Track 2 REC"]').click();
@@ -55,8 +62,12 @@ test.describe('Precision Loop hardware workflow', () => {
 
     await expect(track2).toHaveAttribute('data-track-state', 'RECORDING', { timeout: 5000 });
     await expect(track1).toHaveAttribute('data-track-state', 'PLAYING');
+    
+    // Finalize Track 2 recording
+    await page.waitForTimeout(2000);
+    await track2.locator('button[aria-label="Track 2 STOP"]').click();
 
-    await expect(track2).toHaveAttribute('data-track-state', 'PLAYING', { timeout: 30000 });
+    await expect(track2).toHaveAttribute('data-track-state', 'PLAYING', { timeout: 10000 });
     await expect(track1).toHaveAttribute('data-track-state', 'PLAYING');
 
     // Stop only Track 1. Track 2 must continue playing.

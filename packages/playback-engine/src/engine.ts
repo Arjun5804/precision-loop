@@ -49,6 +49,20 @@ export class PlaybackEngine implements AudioEventSink {
     this.horizonScheduler.replenish(plan, this.timeSource.currentTime(), this.activeTrackIds);
   }
 
+  public getActivePlan(): PlaybackPlan | null {
+    return this.activePlan;
+  }
+
+  public updatePlan(plan: PlaybackPlan): void {
+    if (!this.activePlan) throw new Error('No playback session is active');
+    this.validatePlan(plan);
+    this.activePlan = plan;
+    for (const track of plan.tracks) {
+      this.bufferCache.getOrCreate(track.take);
+    }
+    this.trackMixer.configureTracks(plan.tracks);
+  }
+
   public startTrack(trackId: string): void {
     if (!this.activePlan) throw new Error('No playback session is active');
     if (!this.activePlan.tracks.some(t => t.trackId === trackId)) return;
